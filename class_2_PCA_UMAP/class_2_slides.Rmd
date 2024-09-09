@@ -66,10 +66,9 @@ library(embed)
 
 | PCA Term | SVD Equivalent | Notes |
 |----------|----------------|-------|
-| Loadings | U (left singular matrix) | Contribution of each feature to each component |
-| Scores | Scaled U | Projected samples on each principal component |
+| Scores | U (left singular matrix) | Contribution of each feature to each principal component |
 | Eigenvalues | S^2 | Variance explained by each component |
-| Rotation | V^T (right singular matrix) | Samples in rotated coordinate system |
+| Rotation or loadings| V^T (right singular matrix) | Samples in rotated coordinate system |
 
 ## Matrix Factorization in Genomics
 
@@ -79,12 +78,16 @@ library(embed)
 
 ## Comparison of Matrix Factorization Techniques
 
+In the case of a matrix where the rows represent samples and the columns genes we will then examine relationships between samples
+
 | Method | Gene Relationships | Sample Relationships | Weights |
 |--------|--------------------|-----------------------|---------|
 | SVD | U (left singular vectors) | V^T (right singular vectors) | D or Σ (singular values) |
-| PCA | Loadings | Scores or rotation | Eigenvalues |
+| PCA | Scores | Loadings or Rotation | Eigenvalues |
 | ICA | Unmixing/mixing matrix | Source matrix | - |
 | NMF | Weights | Features | - |
+
+Not you can you use the help from `?broom:::tidy.prcomp()` to figure out the PCA mapping
 
 ## Functions Used in Homework 2
 

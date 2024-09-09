@@ -78,12 +78,12 @@ penguin_pca
 pca_prep %>% tidy()
 ```
 
-```{r}
+```{r, eval=FALSE}
 pca_prep %>% tidy(id = "normalize_Kyfvy")
 ```
 This other step shows us how the data was ommitted
 
-```{r}
+```{r, eval=FALSE}
 pca_prep %>% tidy(id = "naomit_B7AcO")
 ```
 
@@ -179,9 +179,7 @@ ggplot(umap_results, aes(UMAP1, UMAP2, color = species)) +
 
 UMAP tends to create more distinct clusters compared to PCA. While PCA preserves global structure, UMAP is better at preserving local structure. In this case, UMAP seems to separate the penguin species more clearly than PCA.
 
-```{r}
 
-```
 
 ## Bonus: UMAP with Cocktails Dataset
 
