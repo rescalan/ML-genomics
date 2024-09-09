@@ -1,0 +1,222 @@
+---
+title: "Homework 2 Answer Key - ML in Genomics: PCA and UMAP"
+author: "Renan Escalante"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Part 1: PCA with Palmer Penguins Dataset
+
+1. Load libraries and data:
+
+```{r}
+library(tidyverse)
+library(palmerpenguins)
+library(corrr)
+library(ggplot2)
+library(tidymodels)
+
+data("penguins")
+```
+
+2. Create and visualize correlation matrix:
+
+```{r}
+penguins_numeric <- penguins %>%
+  select(where(is.numeric))
+
+correlation_matrix <- cor(penguins_numeric, use = "complete.obs")
+
+corrplot::corrplot(correlation_matrix, method = "color")
+```
+
+3. Perform PCA:
+
+
+```{r}
+penguin_recipe <-
+  recipe(~., data = penguins) %>% 
+  update_role(species, island, sex, new_role = "id") %>% 
+  step_naomit(all_predictors()) %>% 
+  step_normalize(all_predictors()) %>%
+  step_pca(all_predictors(), id = "pca") %>% 
+  prep()
+
+penguin_pca <- 
+  penguin_recipe %>% 
+  tidy(id = "pca") 
+
+penguin_pca
+```
+
+
+```{r}
+
+pca_rec  <-
+  recipe(~., data = penguins) %>% 
+  update_role(species, island, sex, new_role = "id") %>% 
+  step_naomit(all_predictors()) %>% 
+  step_normalize(all_predictors()) %>%
+  step_pca(all_predictors(), id = "pca")
+
+
+pca_prep <- prep(pca_rec)
+```
+
+```{r}
+pca_prep %>% tidy(id = "pca")
+```
+
+
+4. Create scree plot:
+
+```{r}
+penguin_recipe %>% 
+  tidy(id = "pca", type = "variance") %>% 
+  dplyr::filter(terms == "percent variance") %>% 
+  ggplot(aes(x = component, y = value)) + 
+  geom_col(fill = "#b6dfe2") + 
+  xlim(c(0, 5)) + 
+  ylab("% of total variance")
+```
+
+
+5. Create biplot:
+
+```{r}
+pca_results <- bake(pca_prep, new_data = NULL)
+
+ggplot(pca_results, aes(PC1, PC2, color = species)) +
+  geom_point(alpha = 0.7) +
+  labs(color = "Species")
+```
+
+6. Interpretation:
+
+The first two principal components explain the majority of the variance in the data. PC1 seems to be largely influenced by body size measurements (bill length, bill depth, flipper length, body mass), while PC2 appears to capture some of the differences in bill shape between species.
+
+## Part 2: UMAP with Palmer Penguins Dataset
+
+1. Load UMAP library:
+
+```{r}
+library(embed)
+```
+
+2. Prepare data for UMAP:
+
+```{r}
+penguins_scaled <- penguins_numeric %>%
+  scale()
+```
+
+3. Perform UMAP:
+
+```{r}
+umap_rec <- recipe(~., data = penguins) %>% 
+  update_role(species, island, sex, new_role = "id") %>% 
+  step_naomit(all_predictors()) %>% 
+  step_normalize(all_predictors()) %>%
+  step_umap(all_predictors())
+
+umap_prep <- prep(umap_rec)
+```
+
+4. Create UMAP scatter plot:
+
+```{r}
+umap_results <- bake(umap_prep, new_data = NULL)
+
+ggplot(umap_results, aes(UMAP1, UMAP2, color = species)) +
+  geom_point(alpha = 0.7) +
+  labs(color = "Species")
+```
+
+5. Comparison of PCA and UMAP:
+
+UMAP tends to create more distinct clusters compared to PCA. While PCA preserves global structure, UMAP is better at preserving local structure. In this case, UMAP seems to separate the penguin species more clearly than PCA.
+
+```{r}
+
+```
+
+## Bonus: UMAP with Cocktails Dataset
+
+1. Load and preprocess cocktails data:
+
+```{r}
+boston_cocktails <- readr::read_csv("https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2020/2020-05-26/boston_cocktails.csv")
+
+cocktails_processed <- boston_cocktails %>%
+  mutate(
+    ingredient = str_to_lower(ingredient),
+    ingredient = str_replace_all(ingredient, "-", " "),
+    ingredient = str_remove(ingredient, " liqueur$"),
+    ingredient = str_remove(ingredient, " (if desired)$"),
+    ingredient = case_when(
+      str_detect(ingredient, "bitters") ~ "bitters",
+      str_detect(ingredient, "lemon") ~ "lemon juice",
+      str_detect(ingredient, "lime") ~ "lime juice",
+      str_detect(ingredient, "grapefruit") ~ "grapefruit juice",
+      str_detect(ingredient, "orange") ~ "orange juice",
+      TRUE ~ ingredient
+    ),
+    measure = case_when(
+      str_detect(ingredient, "bitters") ~ str_replace(measure, "oz$", "dash"),
+      TRUE ~ measure
+    ),
+    measure = str_replace(measure, " ?1/2", ".5"),
+    measure = str_replace(measure, " ?3/4", ".75"),
+    measure = str_replace(measure, " ?1/4", ".25"),
+    measure_number = parse_number(measure),
+    measure_number = if_else(str_detect(measure, "dash$"),
+      measure_number / 50,
+      measure_number
+    )
+  ) %>%
+  add_count(ingredient) %>%
+  filter(n > 15) %>%
+  select(-n) %>%
+  distinct(row_id, ingredient, .keep_all = TRUE) %>%
+  na.omit()
+
+cocktails_wide <- cocktails_processed %>%
+  select(-ingredient_number, -row_id, -measure) %>%
+  pivot_wider(names_from = ingredient, values_from = measure_number, values_fill = 0) %>%
+  janitor::clean_names() %>%
+  na.omit()
+```
+
+2. Perform UMAP on cocktails data:
+
+```{r}
+cocktails_umap_rec <- recipe(~., data = cocktails_wide) %>%
+  update_role(name, category, new_role = "id") %>%
+  step_normalize(all_predictors()) %>%
+  step_umap(all_predictors())
+
+cocktails_umap_prep <- prep(cocktails_umap_rec)
+```
+
+3. Create UMAP scatter plot for cocktails:
+
+```{r}
+cocktails_umap_results <- juice(cocktails_umap_prep)
+
+ggplot(cocktails_umap_results, aes(umap_1, umap_2, color = category)) +
+  geom_point(alpha = 0.7) +
+  labs(color = "Category")
+```
+
+4. Comparison of UMAP results:
+
+
+
+
+The UMAP results for the cocktails dataset show less distinct clustering compared to the Palmer Penguins dataset. This is likely due to the more complex and diverse nature of cocktail recipes. While penguin species have clear biological distinctions, cocktail categories can have overlapping ingredients and preparation methods, leading to less clear-cut separation in the UMAP projection.
+
+The cocktails UMAP plot might reveal groupings based on common ingredients or preparation styles, while the penguins UMAP plot clearly separates the different species. This difference highlights how UMAP can adapt to the underlying structure of different types of datasets.

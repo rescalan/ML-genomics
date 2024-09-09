@@ -1,0 +1,204 @@
+---
+title: "Class 1 - ML in genomics: Tidy Data, Data Cleaning, and Exploration"
+author: "Renan Escalante"
+date: "2024-08-29"
+output: 
+  ioslides_presentation:
+    widescreen: true
+    smaller: true
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE)
+library(tidyverse)
+library(janitor)
+library(palmerpenguins)
+library(DataExplorer)
+```
+
+## Outline
+
+1. Introduction to Tidy Data
+2. Principles of Tidy Data
+3. Common Issues with Messy Data
+4. Tools for Data Cleaning: tidyverse
+5. Tools for Data Cleaning: janitor
+6. Data Exploration with DataExplorer
+7. Practical Examples
+8. Visualizing Results
+
+## Introduction to Tidy Data
+
+- Tidy data is a standard way of mapping the meaning of a dataset to its structure
+- It makes it easier to:
+  - Visualize data
+  - Work with data using R packages
+  - Model data
+
+## Principles of Tidy Data
+
+1. Each variable forms a column
+2. Each observation forms a row
+3. Each type of observational unit forms a table
+
+```{r, echo=TRUE}
+# Example of tidy data
+head(penguins)
+```
+
+## Common Issues with Messy Data
+
+1. Column headers are values, not variable names
+2. Multiple variables stored in one column
+3. Variables are stored in both rows and columns
+4. Multiple types of observational units in the same table
+5. A single observational unit is stored in multiple tables
+
+## Tools for Data Cleaning: tidyverse
+
+Key functions from tidyverse:
+
+- `pivot_longer()` and `pivot_wider()`
+- `separate()` and `unite()`
+- `drop_na()` and `complete()`
+
+```{r, echo=TRUE}
+# Example of pivot_longer
+tibble(
+  country = c("A", "B", "C"),
+  `1999` = c(0.7, 0.3, 1.0),
+  `2000` = c(1.0, 0.6, 0.9)
+) %>%
+  pivot_longer(cols = -country, names_to = "year", values_to = "value")
+```
+
+## dplyr Verbs for Data Cleaning
+
+- `glimpse()`: Summarized view of data
+- `select()`: Choose columns
+- `filter()`: Choose rows
+- `mutate()`: Create or modify columns
+- `group_by()`: Group data
+- `summarise()`: Summarize data
+
+```{r, echo=TRUE}
+# Example of dplyr verbs
+penguins %>%
+  select(species, body_mass_g) %>%
+  group_by(species) %>%
+  summarise(avg_mass = mean(body_mass_g, na.rm = TRUE))
+```
+
+## Tools for Data Cleaning: janitor
+
+The janitor package provides functions for cleaning and exploring data:
+
+- `clean_names()`: Cleans column names
+- `remove_empty()`: Removes empty rows and columns
+- `get_dupes()`: Identifies duplicate records
+
+```{r, echo=TRUE}
+# Example of clean_names
+df <- data.frame("First Name" = c("John", "Jane"), "Last Name" = c("Doe", "Smith"))
+clean_names(df)
+```
+
+## More janitor Functions
+
+- `tabyl()`: A tidier version of `table()`
+- `adorn_*()` functions: Format `tabyl()` output
+- `top_levels()`: Summarize factor levels
+
+```{r, echo=TRUE}
+# Example of tabyl and adorn functions
+penguins %>%
+  tabyl(species, island) %>%
+  adorn_percentages("row") %>%
+  adorn_pct_formatting(digits = 1) %>%
+  adorn_ns()
+```
+
+## Data Exploration with DataExplorer
+
+DataExplorer provides functions for quick data overview and visualization:
+
+- `introduce()`: Basic summary of the dataset
+- `plot_intro()`: Visualize dataset structure
+- `plot_missing()`: Visualize missing data
+
+```{r, echo=TRUE}
+# Example of introduce
+introduce(penguins)
+```
+
+## Visualizing Data Structure with DataExplorer
+
+```{r, fig.height=4}
+plot_intro(penguins)
+```
+
+## Visualizing Missing Data with DataExplorer
+
+```{r, fig.height=4}
+plot_missing(penguins)
+```
+
+## More DataExplorer Functions
+
+- `plot_histogram()`: Visualize distributions
+- `plot_correlation()`: Visualize correlations
+- `create_report()`: Generate a comprehensive EDA report
+
+```{r, fig.height=4}
+plot_histogram(penguins)
+```
+
+## Practical Example: Cleaning and Exploring Palmer Penguins Data
+
+```{r, echo=TRUE}
+penguins %>%
+  clean_names() %>%
+  remove_empty() %>%
+  drop_na() %>%
+  group_by(species, sex) %>%
+  summarise(
+    avg_bill_length = mean(bill_length_mm),
+    avg_bill_depth = mean(bill_depth_mm),
+    .groups = "drop"
+  ) %>%
+  pivot_wider(
+    names_from = sex, 
+    values_from = c(avg_bill_length, avg_bill_depth)
+  )
+```
+
+## Visualizing Results
+
+Here's how you can include images in your slides:
+
+```{r, echo=TRUE, eval=FALSE}
+knitr::include_graphics("path/to/your/image1.jpg")
+```
+
+![Example Image 1](path/to/your/image1.jpg)
+
+```{r, echo=TRUE, eval=FALSE}
+knitr::include_graphics("path/to/your/image2.png")
+```
+
+![Example Image 2](path/to/your/image2.png)
+
+## Conclusion
+
+- Tidy data principles make data analysis easier
+- Use tidyverse, janitor, and DataExplorer tools to clean and explore your data
+- Practice with real datasets to improve your skills
+- Visualize your results for better understanding and communication
+
+## References
+
+- R for Data Science: https://r4ds.had.co.nz/
+- Tidyverse: https://www.tidyverse.org/
+- Palmer Penguins: https://allisonhorst.github.io/palmerpenguins/
+- janitor: https://sfirke.github.io/janitor/
+- DataExplorer: https://boxuancui.github.io/DataExplorer/

@@ -1,0 +1,57 @@
+---
+title: "Homework 1: Palmer Penguins and Data Tidying"
+author: "Renan Escalante"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Part 1: Palmer Penguins
+
+1. Load the palmer penguins dataset and create a report of the table using the `dataExplorer` package.
+
+2. Is there any missing data in the table? Show how many data points are missing using `dataExplorer`.
+
+3. Using the reference of the `janitor` package, create summary tables of the statistics in the data.
+
+4. Using the palmer penguins dataset, compute the average bill size per species and per island.
+
+5. Create a plot of the bill size difference between males and females per species.
+
+6. Which male population of penguins has the highest bill size?
+
+## Part 2: Tidy Up Messy Data
+
+For this part, we will work with the genomic dataset "class_1_yeast_microarray_genomic_data.csv"
+
+1. Load the provided messy gene expression dataset.
+
+2. Examine the structure of the data and explain why it is considered "messy" according to tidy data principles.
+
+3. Use tidyverse functions to clean and tidy the dataset. Specifically:
+   a. Separate the NAME column into its component parts.
+   b. Remove unnecessary columns.
+   c. Reshape the data so that there is one row per gene per sample.
+   d. Separate the sample information into nutrient and rate columns.
+
+4. Create a plot showing the expression of a specific gene (e.g., "LEU1") across different nutrients and growth rates.
+
+5. Create another plot showing the expression patterns of all genes involved in a specific biological process (e.g., "leucine biosynthesis") across different nutrients and growth rates.
+
+6. Briefly interpret the plots you've created. What biological insights can you draw from them?
+
+## Part 3: Tidy Your Own Data and Visualize
+
+Select a dataset that you want to work on for your final project. This could be a project you are already working on. Apply some visualization and data cleaning techniques on your own data.
+
+1. Describe your chosen dataset and why you selected it.
+
+2. Perform some initial data exploration and cleaning.
+
+3. Create at least two meaningful visualizations of your data.
+
+4. Discuss any insights or patterns you've discovered from your analysis.
+
+Remember to use tidyverse packages when possible for data manipulation and visualization, particularly the more recent functions like `pivot_longer`, `mutate`, and `across`.

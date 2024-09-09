@@ -1,0 +1,305 @@
+---
+title: "Homework 3 Answer Key - ML in genomics: Clustering with Palmer Penguins and NCI60"
+author: "Renan Escalante"
+date: "`r Sys.Date()`"
+output: 
+  html_document:
+    toc: true
+    toc_float: true
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
+```
+
+## Part 1: Clustering with Palmer Penguins
+
+### 1.1 Data Preparation
+
+```{r libraries}
+library(tidyverse)
+library(tidymodels)
+library(tidyclust)
+library(palmerpenguins)
+library(factoextra)
+
+# Prepare the data
+penguins_cleaned <- penguins %>%
+  drop_na() %>%
+  select(bill_length_mm, bill_depth_mm, flipper_length_mm, body_mass_g)
+
+penguins_recipe <- recipe(~., data = penguins_cleaned) %>%
+  step_normalize(all_predictors())
+
+penguins_prep <- prep(penguins_recipe)
+penguins_scaled <- juice(penguins_prep)
+```
+
+### 1.2 K-means Clustering
+
+```{r kmeans}
+set.seed(123)
+kmeans_spec <- k_means(num_clusters = 3) %>%
+  set_engine("stats")
+
+kmeans_fit <- kmeans_spec %>%
+  fit(~., data = penguins_scaled)
+
+kmeans_clusters <- kmeans_fit %>%
+  extract_cluster_assignment()
+
+kmeans_centroids <- kmeans_fit %>%
+  extract_centroids()
+
+ggplot(penguins_scaled, aes(x = bill_length_mm, y = bill_depth_mm, color = kmeans_clusters$.cluster)) +
+  geom_point() +
+  geom_point(data = kmeans_centroids, aes(x = bill_length_mm, y = bill_depth_mm), color = "black", size = 5, shape = 8) +
+  labs(title = "K-means Clustering", color = "Cluster")
+```
+
+### 1.3 Hierarchical Clustering
+
+```{r hclust}
+set.seed(123)
+hclust_spec <- hier_clust(num_clusters = 3, linkage_method = "average") %>%
+  set_engine("stats")
+
+hclust_fit <- hclust_spec %>%
+  fit(~., data = penguins_scaled)
+
+hclust_clusters <- hclust_fit %>%
+  extract_cluster_assignment()
+
+hclust_centroids <- hclust_fit %>%
+  extract_centroids()
+
+# Visualize dendrogram
+hclust_fit %>%
+  extract_fit_engine() %>%
+  fviz_dend(k = 3, main = "Hierarchical Clustering Dendrogram")
+
+# Scatter plot
+ggplot(penguins_scaled, aes(x = bill_length_mm, y = bill_depth_mm, color = hclust_clusters$.cluster)) +
+  geom_point() +
+  geom_point(data = hclust_centroids, aes(x = bill_length_mm, y = bill_depth_mm), color = "black", size = 5, shape = 8) +
+  labs(title = "Hierarchical Clustering", color = "Cluster")
+```
+
+### 1.4 Comparing Clustering Methods
+
+```{r comparison}
+# Confusion matrix
+table(kmeans = kmeans_clusters$.cluster, hclust = hclust_clusters$.cluster)
+
+# Silhouette scores
+kmeans_silhouette <- kmeans_fit %>%
+  silhouette_avg(penguins_scaled)
+
+hclust_silhouette <- hclust_fit %>%
+  silhouette_avg(penguins_scaled)
+
+cat("K-means Silhouette Score:", kmeans_silhouette$.estimate, "\n")
+cat("Hierarchical Clustering Silhouette Score:", hclust_silhouette$.estimate, "\n")
+
+# Silhouette plots
+plot_silhouette <- function(fit, data, title) {
+  clusters <- fit %>% extract_cluster_assignment()
+  sil <- cluster::silhouette(as.numeric(clusters$.cluster), dist(data))
+  fviz_silhouette(sil) +
+    labs(title = title)
+}
+
+plot_silhouette(kmeans_fit, penguins_scaled, "K-means Silhouette Plot")
+plot_silhouette(hclust_fit, penguins_scaled, "Hierarchical Clustering Silhouette Plot")
+```
+
+### 1.5 Determining Optimal Number of Clusters
+
+```{r optimal_clusters}
+# Elbow method
+calculate_sse <- function(k) {
+  kmeans_spec <- k_means(num_clusters = k) %>% set_engine("stats")
+  kmeans_fit <- kmeans_spec %>% fit(~., data = penguins_scaled)
+  sse <- kmeans_fit %>% sse_within_total()
+  return(sse$.estimate)
+}
+
+k_values <- 1:10
+sse_values <- map_dbl(k_values, calculate_sse)
+
+ggplot(tibble(k = k_values, sse = sse_values), aes(x = k, y = sse)) +
+  geom_line() +
+  geom_point() +
+  labs(title = "Elbow Method for K-means", x = "Number of Clusters (k)", y = "Within-cluster Sum of Squares")
+
+# Silhouette method
+average_silhouette <- function(k) {
+  kmeans_spec <- k_means(num_clusters = k) %>% set_engine("stats")
+  kmeans_fit <- kmeans_spec %>% fit(~., data = penguins_scaled)
+  sil <- kmeans_fit %>% silhouette_avg(penguins_scaled)
+  return(sil$.estimate)
+}
+
+silhouette_values <- map_dbl(k_values[-1], average_silhouette)
+
+ggplot(tibble(k = k_values[-1], silhouette = silhouette_values), aes(x = k, y = silhouette)) +
+  geom_line() +
+  geom_point() +
+  labs(title = "Silhouette Method for K-means", x = "Number of Clusters (k)", y = "Average Silhouette Width")
+```
+
+## Part 2: Advanced Clustering with NCI60 Dataset
+
+### 2.1 Data Preparation
+
+```{r nci60_prep}
+library(ISLR)
+data(NCI60)
+
+nci60_data <- NCI60$data
+nci60_labels <- NCI60$labs
+
+# Scale the data
+nci60_scaled <- scale(nci60_data)
+```
+
+### 2.2 Hierarchical Clustering with Heatmap
+
+```{r nci60_hclust_heatmap}
+library(pheatmap)
+
+# Perform hierarchical clustering
+nci60_dist <- dist(t(nci60_scaled))
+nci60_hclust <- hclust(nci60_dist, method = "complete")
+
+# Select top 100 most variable genes
+gene_vars <- apply(nci60_scaled, 1, var)
+top_genes <- order(gene_vars, decreasing = TRUE)[1:50]
+
+# Create heatmap
+pheatmap(nci60_scaled[top_genes, ], 
+         cluster_rows = TRUE, 
+         cluster_cols = nci60_hclust, 
+         annotation_col = data.frame(cancer_type = nci60_labels),
+         show_colnames = FALSE,
+         main = "NCI60 Gene Expression Heatmap")
+```
+
+### 2.3 PCA and K-means Clustering
+
+```{r nci60_pca_kmeans}
+# Perform PCA
+nci60_pca <- prcomp(nci60_scaled)
+
+# Select top 50 principal components
+nci60_pca_data <- nci60_pca$x[, 1:50]
+
+# Perform k-means clustering
+set.seed(123)
+kmeans_spec <- k_means(num_clusters = 5) %>% set_engine("stats")
+kmeans_fit <- kmeans_spec %>% fit(~., data = as.data.frame(nci60_pca_data))
+
+# Visualize clustering results
+pca_results <- tibble(
+  PC1 = nci60_pca$x[, 1],
+  PC2 = nci60_pca$x[, 2],
+  cluster = kmeans_fit %>% extract_cluster_assignment() %>% pull(.cluster),
+  cancer_type = nci60_labels
+)
+
+ggplot(pca_results, aes(x = PC1, y = PC2, color = cluster, shape = cancer_type)) +
+  geom_point(size = 3) +
+  labs(title = "PCA and K-means Clustering of NCI60 Data",
+       x = "PC1", y = "PC2", color = "Cluster", shape = "Cancer Type")
+```
+
+### 2.4 Consensus Clustering
+
+```{r consensus_clustering}
+library(ConsensusClusterPlus)
+
+# Prepare data for consensus clustering
+nci60_for_consensus <- t(nci60_scaled)
+
+# Perform consensus clustering
+set.seed(123)
+consensus_result <- ConsensusClusterPlus(nci60_for_consensus,
+                                         maxK = 6,
+                                         reps = 50,
+                                         pItem = 0.8,
+                                         pFeature = 1,
+                                         title = "NCI60_ConsensusCluster",
+                                         plot = "png")
+
+# Plot consensus matrices
+par(mfrow = c(2, 3))
+for (k in 2:6) {
+  consensusMatrix <- consensus_result[[k]]$consensusMatrix
+  image(consensusMatrix, main = paste("k =", k))
+}
+
+# Plot delta area
+calcDelta <- function(k, consensus_result) {
+  m <- consensus_result[[k]]$consensusMatrix
+  m[lower.tri(m)] <- NA
+  sum(apply(m, 2, median, na.rm = TRUE))
+}
+
+delta_areas <- sapply(2:6, calcDelta, consensus_result = consensus_result)
+plot(2:6, delta_areas, type = "b", xlab = "k", ylab = "Delta Area",
+     main = "Delta Area Plot for Consensus Clustering")
+```
+
+
+## Conclusion
+
+In this homework, we explored various clustering techniques using both the Palmer Penguins dataset and the NCI60 cancer cell line dataset. 
+
+For the Palmer Penguins dataset:
+
+1. We applied both k-means and hierarchical clustering methods, visualizing the results using scatter plots and dendrograms.
+2. The comparison of clustering methods showed that both k-means and hierarchical clustering produced similar results, with some differences in cluster assignments.
+3. Silhouette analysis indicated that both methods performed reasonably well, with average silhouette scores above 0.5.
+4. The elbow method and silhouette analysis for determining the optimal number of clusters suggested that 3 clusters might be appropriate for this dataset, which aligns with the three penguin species present.
+
+For the NCI60 dataset:
+
+1. Hierarchical clustering with heatmap visualization revealed patterns of gene expression across different cancer types.
+2. PCA combined with k-means clustering helped to reduce dimensionality and identify clusters in the high-dimensional gene expression data.
+3. Consensus clustering provided a more robust approach to determine the optimal number of clusters, with the delta area plot suggesting that 3-4 clusters might be appropriate for this dataset.
+
+Key observations and insights:
+
+1. Clustering techniques can effectively group similar data points in both low-dimensional (Palmer Penguins) and high-dimensional (NCI60) datasets.
+2. The choice of clustering method and the number of clusters can significantly impact the results and interpretation.
+3. Visualization techniques such as scatter plots, dendrograms, and heatmaps are crucial for understanding and interpreting clustering results.
+4. For genomic data like NCI60, combining dimensionality reduction (PCA) with clustering can help reveal patterns that might not be apparent in the full dataset.
+5. Consensus clustering provides a more stable approach for determining the number of clusters in complex datasets like gene expression data.
+
+Strengths and weaknesses of different clustering methods:
+
+1. K-means:
+   - Strengths: Fast, scalable, and works well for globular clusters.
+   - Weaknesses: Sensitive to initial centroids, assumes equal-sized clusters, and struggles with non-globular shapes.
+
+2. Hierarchical clustering:
+   - Strengths: Provides a dendrogram for easy visualization of relationships, no need to specify the number of clusters in advance.
+   - Weaknesses: Computationally intensive for large datasets, can be sensitive to outliers.
+
+3. Consensus clustering:
+   - Strengths: More robust and stable results, helps determine the optimal number of clusters.
+   - Weaknesses: Computationally intensive, may be overkill for simpler datasets.
+
+Applicability to biological data:
+
+1. These clustering methods are widely applicable in genomics and bioinformatics, helping to identify patterns in gene expression, group similar samples or genes, and reveal underlying biological structures.
+2. For datasets like NCI60, clustering can help identify cancer subtypes or gene expression patterns associated with different cancer types, potentially leading to new insights in cancer biology and personalized medicine.
+3. In studies like the Palmer Penguins, clustering can help identify morphological differences between species or subpopulations, which can be valuable in ecological and evolutionary studies.
+
+Future directions:
+
+1. Explore other clustering algorithms such as DBSCAN or Gaussian Mixture Models, which may be better suited for certain types of biological data.
+2. Investigate the biological significance of the identified clusters in the NCI60 dataset by performing pathway analysis or gene set enrichment analysis.
+3. Apply these clustering techniques to other types of biological data, such as single-cell RNA-seq data or protein-protein interaction networks.
+
+In conclusion, this homework demonstrated the power of clustering techniques in analyzing both simple and complex biological datasets. The choice of clustering method and careful interpretation of results are crucial for extracting meaningful insights from the data.

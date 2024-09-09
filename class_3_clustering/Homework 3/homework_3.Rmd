@@ -1,0 +1,147 @@
+---
+title: "Homework 3 - ML in genomics: Clustering with Palmer Penguins and NCI60"
+author: "Renan Escalante"
+date: "`r Sys.Date()`"
+output: 
+  html_document:
+    toc: true
+    toc_float: true
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
+```
+
+## Introduction
+
+In this homework, we will explore clustering techniques using the Palmer Penguins dataset and the NCI60 cancer cell line dataset. We'll focus on using the tidymodels and tidyclust frameworks to perform and evaluate clustering algorithms.
+
+## Part 1: Clustering with Palmer Penguins
+
+### 1.1 Data Preparation
+
+Load the necessary libraries and prepare the Palmer Penguins dataset for clustering:
+
+```{r libraries, eval=FALSE}
+library(tidyverse)
+library(tidymodels)
+library(tidyclust)
+library(palmerpenguins)
+library(factoextra)
+
+# Prepare the data
+# Your code here
+```
+
+### 1.2 K-means Clustering
+
+Perform k-means clustering on the Palmer Penguins dataset:
+
+1. Create a k-means model specification with 3 clusters.
+2. Fit the model to the prepared data.
+3. Extract cluster assignments and centroids.
+4. Visualize the clusters using a scatter plot of bill length vs. bill depth.
+
+```{r kmeans, eval=FALSE}
+# Your code here
+```
+
+### 1.3 Hierarchical Clustering
+
+Perform hierarchical clustering on the Palmer Penguins dataset:
+
+1. Create a hierarchical clustering model specification with 3 clusters and "average" linkage.
+2. Fit the model to the prepared data.
+3. Extract cluster assignments and centroids.
+4. Visualize the dendrogram.
+5. Create a scatter plot of bill length vs. bill depth with cluster assignments.
+
+```{r hclust, eval=FALSE}
+# Your code here
+```
+
+### 1.4 Comparing Clustering Methods
+
+Compare the results of k-means and hierarchical clustering:
+
+1. Create a confusion matrix of cluster assignments between the two methods.
+2. Calculate and compare silhouette scores for both methods.
+3. Visualize silhouette plots for both methods.
+
+```{r comparison, eval=FALSE}
+# Your code here
+```
+
+### 1.5 Determining Optimal Number of Clusters
+
+Determine the optimal number of clusters for k-means clustering:
+
+1. Implement the elbow method.
+2. Implement the silhouette method.
+3. Visualize the results of both methods.
+
+```{r optimal_clusters, eval=FALSE}
+# Your code here
+```
+
+## Part 2: Advanced Clustering with NCI60 Dataset
+
+### 2.1 Data Preparation
+
+Load and prepare the NCI60 dataset for clustering:
+
+```{r nci60_prep, eval=FALSE}
+library(ISLR)
+data(NCI60)
+
+# Prepare the NCI60 data
+# Your code here
+```
+
+### 2.2 Hierarchical Clustering with Heatmap
+
+Perform hierarchical clustering on the NCI60 dataset and visualize the results using a heatmap:
+
+1. Perform hierarchical clustering on the gene expression data.
+2. Create a heatmap of the gene expression data, with rows clustered based on the hierarchical clustering results.
+3. Add color bars to indicate cancer types.
+
+```{r nci60_hclust_heatmap, eval=FALSE}
+# Your code here
+```
+
+### 2.3 PCA and K-means Clustering
+
+Combine PCA and k-means clustering for the NCI60 dataset:
+
+1. Perform PCA on the gene expression data.
+2. Select the top 50 principal components.
+3. Perform k-means clustering on the selected principal components.
+4. Visualize the clustering results using the first two principal components.
+
+```{r nci60_pca_kmeans, eval=FALSE}
+# Your code here
+```
+
+### 2.4 Consensus Clustering
+
+Implement consensus clustering for the NCI60 dataset:
+
+1. Use the `ConsensusClusterPlus` package to perform consensus clustering.
+2. Try different numbers of clusters (e.g., 2 to 6).
+3. Visualize the consensus matrices and delta area plot.
+4. Determine the optimal number of clusters based on the results.
+
+```{r consensus_clustering, eval=FALSE}
+# Install and load the ConsensusClusterPlus package
+# if (!requireNamespace("BiocManager", quietly = TRUE))
+#     install.packages("BiocManager")
+# BiocManager::install("ConsensusClusterPlus")
+library(ConsensusClusterPlus)
+
+# Your code here
+```
+
+## Conclusion
+
+Summarize your findings from both the Palmer Penguins and NCI60 datasets. Discuss the strengths and weaknesses of different clustering methods and their applicability to biological data.

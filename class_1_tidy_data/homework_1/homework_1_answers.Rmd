@@ -1,0 +1,177 @@
+---
+title: "Homework 1 Answers: Palmer Penguins and Data Tidying"
+author: "Renan Escalante"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r load_libraries, message=FALSE, warning=FALSE}
+library(tidyverse)
+library(palmerpenguins)
+library(DataExplorer)
+library(janitor)
+library(here)
+```
+
+## Part 1: Palmer Penguins
+
+1. Load the palmer penguins dataset and create a report of the table using the `dataExplorer` package.
+
+```{r load_data, eval=FALSE}
+data(penguins)
+create_report(penguins)
+```
+
+2. Is there any missing data in the table? Show how many data points are missing using `dataExplorer`.
+
+```{r missing_data}
+plot_missing(penguins)
+```
+
+3. Using the reference of the `janitor` package, create summary tables of the statistics in the data.
+
+```{r summary_stats}
+penguins %>%
+  tabyl(species, island) %>%
+  adorn_percentages("row") %>%
+  adorn_pct_formatting(digits = 1) %>%
+  adorn_ns()
+```
+
+
+```{r}
+penguins %>%
+  group_by(species) %>%
+  summarise(across(where(is.numeric), list(mean = mean, sd = sd), na.rm = TRUE))
+```
+
+4. Using the palmer penguins dataset, compute the average bill size per species and per island.
+
+```{r avg_bill_size}
+penguins %>%
+  group_by(species, island) %>%
+  summarise(avg_bill_length = mean(bill_length_mm, na.rm = TRUE),
+            avg_bill_depth = mean(bill_depth_mm, na.rm = TRUE),
+            .groups = "drop") %>%
+  arrange(species, island)
+```
+
+5. Create a plot of the bill size difference between males and females per species.
+
+```{r bill_size_plot}
+penguins %>%
+  ggplot(aes(x = species, y = bill_length_mm, fill = sex)) +
+  geom_boxplot() +
+  labs(title = "Bill Length by Species and Sex",
+       x = "Species", y = "Bill Length (mm)") +
+  theme_minimal()
+```
+
+6. Which male population of penguins has the highest bill size?
+
+```{r highest_male_bill_size}
+penguins %>%
+  filter(sex == "male") %>%
+  group_by(species) %>%
+  summarise(avg_bill_length = mean(bill_length_mm, na.rm = TRUE)) %>%
+  arrange(desc(avg_bill_length))
+```
+
+## Part 2: Tidy Up Messy Data
+
+1. Load the provided messy gene expression dataset.
+
+```{r load_messy_data}
+
+original_data <- here::here("class_1_tidy_data/homework_1/class_1_yeast_microarray_genomic_data.csv") %>% read_csv()
+
+```
+
+2. The data is considered "messy" because:
+   - Multiple variables are stored in one column (NAME)
+   - Column headers are values, not variable names (G0.05, N0.1, etc.)
+   - Each row contains multiple observations (one for each nutrient and growth rate)
+
+3. Clean and tidy the dataset:
+
+```{r tidy_data}
+cleaned_data <- original_data %>%
+  separate(NAME, c("name", "BP", "MF", "systematic_name", "number"), sep = " \\|\\| ") %>%
+  mutate(across(name:systematic_name, str_trim)) %>%
+  select(-number, -GID, -YORF, -GWEIGHT) %>%
+  pivot_longer(cols = G0.05:N0.3, names_to = "sample", values_to = "expression") %>%
+  separate(sample, c("nutrient", "rate"), sep = 1, convert = TRUE)
+
+cleaned_data
+```
+
+4. Plot the expression of the LEU1 gene:
+
+```{r plot_LEU1}
+cleaned_data %>%
+  filter(name == "LEU1") %>%
+  ggplot(aes(rate, expression, color = nutrient)) +
+  geom_line() +
+  geom_point() +
+  labs(title = "Expression of LEU1 gene",
+       x = "Growth Rate",
+       y = "Expression Level",
+       color = "Nutrient") +
+  theme_minimal()
+```
+
+5. Plot the expression patterns of all genes involved in leucine biosynthesis:
+
+```{r plot_leucine_biosynthesis}
+cleaned_data %>%
+  filter(BP == "leucine biosynthesis") %>%
+  ggplot(aes(rate, expression, color = nutrient)) +
+  geom_line() +
+  geom_point() +
+  facet_wrap(~name, scales = "free_y") +
+  labs(title = "Expression of Leucine Biosynthesis Genes",
+       x = "Growth Rate",
+       y = "Expression Level",
+       color = "Nutrient") +
+  theme_minimal()
+```
+
+6. Interpretation of the plots:
+
+The plots show how the expression of genes involved in leucine biosynthesis changes with growth rate and nutrient limitation. Some observations:
+
+- LEU1 shows higher expression under glucose limitation (G) compared to nitrogen limitation (N), especially at lower growth rates.
+- The expression of LEU1 decreases as the growth rate increases, suggesting that the cell needs less leucine biosynthesis when growing faster.
+- Different genes in the leucine biosynthesis pathway show slightly different patterns, which could indicate different regulatory mechanisms or roles in the pathway.
+
+These insights could help researchers understand how yeast cells regulate their metabolism in response to different nutrient conditions and growth rates.
+
+## Part 3: Tidy Your Own Data and Visualize
+
+For this part, you would need to use your own dataset. Here's an example of what you might do:
+
+1. Describe your chosen dataset and why you selected it.
+2. Perform some initial data exploration and cleaning.
+3. Create at least two meaningful visualizations of your data.
+4. Discuss any insights or patterns you've discovered from your analysis.
+
+```{r your_data_analysis, eval=FALSE}
+# Load your own dataset
+# my_data <- read_csv("path/to/your/data.csv")
+
+# Perform data cleaning and exploration
+# my_clean_data <- my_data %>%
+#   ... (cleaning steps)
+
+# Create visualizations
+# ggplot(my_clean_data, aes(x = ..., y = ...)) +
+#   geom_...() +
+#   ... (other ggplot layers)
+
+# Discuss insights and patterns
+```
+
+Remember to replace the placeholder code with actual analysis of your chosen dataset.
