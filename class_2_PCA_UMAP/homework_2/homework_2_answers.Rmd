@@ -40,7 +40,7 @@ corrplot::corrplot(correlation_matrix, method = "color")
 ```{r}
 penguin_recipe <-
   recipe(~., data = penguins) %>% 
-  update_role(species, island, sex, new_role = "id") %>% 
+  update_role(species, island, sex, year, new_role = "id") %>% 
   step_naomit(all_predictors()) %>% 
   step_normalize(all_predictors()) %>%
   step_pca(all_predictors(), id = "pca") %>% 
@@ -55,10 +55,9 @@ penguin_pca
 
 
 ```{r}
-
 pca_rec  <-
   recipe(~., data = penguins) %>% 
-  update_role(species, island, sex, new_role = "id") %>% 
+  update_role(species, island, sex, year, new_role = "id") %>% 
   step_naomit(all_predictors()) %>% 
   step_normalize(all_predictors()) %>%
   step_pca(all_predictors(), id = "pca")
@@ -68,11 +67,33 @@ pca_prep <- prep(pca_rec)
 ```
 
 ```{r}
-pca_prep %>% tidy(id = "pca")
+penguin_pca <- pca_prep %>% tidy(id = "pca")
+
+penguin_pca
 ```
 
+4.  The function tidy shows the different processing steps in the recipe. When using the other ids we can see the values of the mean and variance to normalize the data
+
+```{r}
+pca_prep %>% tidy()
+```
+
+```{r}
+pca_prep %>% tidy(id = "normalize_Kyfvy")
+```
+This other step shows us how the data was ommitted
+
+```{r}
+pca_prep %>% tidy(id = "naomit_B7AcO")
+```
 
 4. Create scree plot:
+
+```{r}
+penguin_recipe %>% 
+  tidy(id = "pca")
+```
+
 
 ```{r}
 penguin_recipe %>% 
@@ -82,6 +103,24 @@ penguin_recipe %>%
   geom_col(fill = "#b6dfe2") + 
   xlim(c(0, 5)) + 
   ylab("% of total variance")
+```
+
+5. Create loadings plot. Loadings represent the contribution of each variable to the PCs.
+
+```{r}
+penguin_pca %>%
+  # mutate(terms = tidytext::reorder_within(terms, 
+  #                                         abs(value), 
+  #                                         component)) %>%
+  ggplot(aes(abs(value), terms, fill = value > 0)) +
+  geom_col() +
+  facet_wrap(~component, scales = "free_y") +
+  # tidytext::scale_y_reordered() +
+  scale_fill_manual(values = c("#b6dfe2", "#0A537D")) +
+  labs(
+    x = "Absolute value of contribution",
+    y = NULL, fill = "Positive?"
+  ) 
 ```
 
 
@@ -118,7 +157,7 @@ penguins_scaled <- penguins_numeric %>%
 
 ```{r}
 umap_rec <- recipe(~., data = penguins) %>% 
-  update_role(species, island, sex, new_role = "id") %>% 
+  update_role(species, island, sex, year, new_role = "id") %>% 
   step_naomit(all_predictors()) %>% 
   step_normalize(all_predictors()) %>%
   step_umap(all_predictors())
