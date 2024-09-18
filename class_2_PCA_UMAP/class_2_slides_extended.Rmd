@@ -155,6 +155,14 @@ knitr::include_graphics(specific_image)
 -   Common techniques: PCA, ICA, NMF
 -   Input matrix: genes as rows, samples as columns
 
+## Matrix Factorization in Genomics
+
+```{r, echo=FALSE, out.width="80%", fig.align="center"}
+# Choose a specific image, for example, the first one
+specific_image <- image_files[8]
+knitr::include_graphics(specific_image)
+```
+
 ## Comparison of Matrix Factorization Techniques
 
 In the case of a matrix where the rows represent samples and the columns genes we will then examine relationships between samples
