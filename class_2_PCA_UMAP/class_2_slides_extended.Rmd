@@ -1,0 +1,202 @@
+---
+title: "Class 2 - ML in Genomics: SVD, PCA, and Matrix Factorization"
+author: "Renan Escalante"
+date: "`r Sys.Date()`"
+output:
+  ioslides_presentation:
+    widescreen: true
+    smaller: true
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+library(tidyverse)
+library(palmerpenguins)
+library(corrr)
+library(ggplot2)
+library(tidymodels)
+library(embed)
+```
+
+```{=html}
+<style>
+.scaled-image {
+  max-width: 100%;
+  max-height: 80vh;
+  display: block;
+  margin: auto;
+}
+</style>
+```
+## Machine learning intro
+
+```{r, echo=FALSE, out.width="60%", fig.asp=0.1, fig.align="center"}
+image_dir <- here::here("class_2_PCA_UMAP/class_2_SVD_PCA_UMAP_images/")
+image_files <- list.files(path = image_dir, 
+                          pattern = "\\.jpg$|\\.png$|\\.gif$|\\.jpeg$", 
+                          full.names = TRUE)
+# Choose a specific image, for example, the first one
+specific_image <- image_files[1]
+knitr::include_graphics(specific_image)
+```
+
+## Machine learning intro
+
+```{r, echo=FALSE, out.width="60%", fig.align="center"}
+image_dir <- here::here("class_2_PCA_UMAP/class_2_SVD_PCA_UMAP_images/")
+image_files <- list.files(path = image_dir, 
+                          pattern = "\\.jpg$|\\.png$|\\.gif$|\\.jpeg$", 
+                          full.names = TRUE)
+# Choose a specific image, for example, the first one
+specific_image <- image_files[2]
+knitr::include_graphics(specific_image)
+```
+
+
+## Singular Value Decomposition (SVD)
+
+-   SVD factorizes a matrix into the product of 3 matrices: $X = UDV^T$
+-   When X has dimensionality n x m (n rows by m columns):
+    -   U has dimensionality n x n
+    -   D has dimensionality n x m
+    -   V has dimensionality m x m
+
+## SVD Components
+
+| Matrix   | Name                  | Interpretation                                              |
+|------------------|-----------------|-------------------------------------|
+| U        | Left singular vector  | Measures importance of each gene to each latent variable    |
+| D (or Σ) | Singular values       | Quantifies importance of each latent variable               |
+| V\^T     | Right singular vector | Quantifies contribution of each latent variable to a sample |
+
+## SVD Applications
+
+-   Gene expression data
+-   Face recognition (Eigenfaces)
+-   Flow field analysis over time
+-   Mutation data analysis
+
+## SVD Approximation
+
+-   SVD generates the best approximation to an input data matrix X
+-   Truncating columns of singular matrices leads to best approximation in least square sense
+-   Eckart-Young theorem: Hierarchy of best low-rank approximations
+
+## Optimal Threshold for SVD
+
+-   Determine value of r (number of components to keep)
+-   Methods:
+    -   Set minimum percentage of reconstructed variance (e.g., 90% or 99%)
+    -   Elbow method
+    -   Optimal truncation value (Donoho et al.)
+
+## PCA and SVD Relationship
+
+-   PCA is SVD in disguise (after centering columns of X to have mean 0)
+-   Eigenvalues = square of diagonal matrix S
+-   Columns of U are PC loading vectors
+-   Columns of V (up to scaling) are PC score vectors
+
+## PCA Terminology vs SVD Terminology
+
+| PCA Term             | SVD Equivalent               | Notes                                                    |
+|---------------------|---------------------------------|-----------------|
+| Scores               | U (left singular matrix)     | Contribution of each feature to each principal component |
+| Eigenvalues          | S\^2                         | Variance explained by each component                     |
+| Rotation or loadings | V\^T (right singular matrix) | Samples in rotated coordinate system                     |
+
+## Matrix Factorization in Genomics
+
+-   Reveals low-dimensional structure representing interactions between and within cells
+-   Common techniques: PCA, ICA, NMF
+-   Input matrix: genes as rows, samples as columns
+
+## Comparison of Matrix Factorization Techniques
+
+In the case of a matrix where the rows represent samples and the columns genes we will then examine relationships between samples
+
+| Method | Gene Relationships        | Sample Relationships          | Weights                  |
+|---------------|--------------------|-----------------------|---------------|
+| SVD    | U (left singular vectors) | V\^T (right singular vectors) | D or Σ (singular values) |
+| PCA    | Scores                    | Loadings or Rotation          | Eigenvalues              |
+| ICA    | Unmixing/mixing matrix    | Source matrix                 | \-                       |
+| NMF    | Weights                   | Features                      | \-                       |
+
+Not you can you use the help from `?broom:::tidy.prcomp()` to figure out the PCA mapping
+
+## Functions Used in Homework 2
+
+### Data Preparation
+
+```{r, echo=TRUE, eval=FALSE}
+library(tidyverse)
+library(palmerpenguins)
+data("penguins")
+penguins_numeric <- penguins %>% select(where(is.numeric))
+```
+
+### Correlation Matrix
+
+```{r, echo=TRUE, eval=FALSE}
+correlation_matrix <- cor(penguins_numeric, use = "complete.obs")
+corrplot::corrplot(correlation_matrix, method = "color")
+```
+
+## PCA Functions
+
+```{r, echo=TRUE, eval=FALSE}
+library(tidymodels)
+
+pca_rec <- recipe(~., data = penguins_numeric) %>%
+  step_normalize(all_predictors()) %>%
+  step_pca(all_predictors())
+
+pca_prep <- prep(pca_rec)
+```
+
+## Visualizing PCA Results
+
+```{r, echo=TRUE, eval=FALSE}
+# Scree plot
+tidy(pca_prep, 2) %>%
+  filter(terms == "percent variance") %>%
+  ggplot(aes(x = component, y = value)) +
+  geom_col() +
+  ylab("Percent Variance Explained") +
+  xlab("Principal Component")
+
+# Biplot
+pca_results <- juice(pca_prep)
+ggplot(pca_results, aes(PC1, PC2, color = penguins$species)) +
+  geom_point(alpha = 0.7) +
+  labs(color = "Species")
+```
+
+## UMAP Functions
+
+```{r, echo=TRUE, eval=FALSE}
+library(embed)
+
+umap_rec <- recipe(~., data = penguins_numeric) %>%
+  step_normalize(all_predictors()) %>%
+  step_umap(all_predictors())
+
+umap_prep <- prep(umap_rec)
+```
+
+## Visualizing UMAP Results
+
+```{r, echo=TRUE, eval=FALSE}
+umap_results <- juice(umap_prep)
+
+ggplot(umap_results, aes(umap_1, umap_2, color = penguins$species)) +
+  geom_point(alpha = 0.7) +
+  labs(color = "Species")
+```
+
+## Conclusion
+
+-   SVD and PCA are powerful techniques for dimensionality reduction
+-   Matrix factorization methods reveal different patterns in genomic data
+-   Understanding the relationship between these methods is crucial for effective data analysis
+-   Practical implementation using R packages like tidymodels and embed enhances our analytical capabilities
