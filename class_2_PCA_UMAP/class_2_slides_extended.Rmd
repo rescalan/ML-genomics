@@ -28,30 +28,29 @@ library(embed)
 }
 </style>
 ```
-## Machine learning intro
 
-```{r, echo=FALSE, out.width="60%", fig.asp=0.1, fig.align="center"}
+```{r}
 image_dir <- here::here("class_2_PCA_UMAP/class_2_SVD_PCA_UMAP_images/")
 image_files <- list.files(path = image_dir, 
                           pattern = "\\.jpg$|\\.png$|\\.gif$|\\.jpeg$", 
                           full.names = TRUE)
-# Choose a specific image, for example, the first one
-specific_image <- image_files[1]
-knitr::include_graphics(specific_image)
 ```
 
 ## Machine learning intro
 
 ```{r, echo=FALSE, out.width="60%", fig.align="center"}
-image_dir <- here::here("class_2_PCA_UMAP/class_2_SVD_PCA_UMAP_images/")
-image_files <- list.files(path = image_dir, 
-                          pattern = "\\.jpg$|\\.png$|\\.gif$|\\.jpeg$", 
-                          full.names = TRUE)
 # Choose a specific image, for example, the first one
 specific_image <- image_files[2]
 knitr::include_graphics(specific_image)
 ```
 
+## Machine learning intro
+
+```{r, echo=FALSE, out.width="60%", fig.asp=0.1, fig.align="center"}
+# Choose a specific image, for example, the first one
+specific_image <- image_files[1]
+knitr::include_graphics(specific_image)
+```
 
 ## Singular Value Decomposition (SVD)
 
@@ -60,6 +59,15 @@ knitr::include_graphics(specific_image)
     -   U has dimensionality n x n
     -   D has dimensionality n x m
     -   V has dimensionality m x m
+    
+    
+## SVD visualization
+
+```{r, echo=FALSE, out.width="60%", fig.align="center"}
+# Choose a specific image, for example, the first one
+specific_image <- image_files[3]
+knitr::include_graphics(specific_image)
+```
 
 ## SVD Components
 
@@ -69,18 +77,39 @@ knitr::include_graphics(specific_image)
 | D (or Σ) | Singular values       | Quantifies importance of each latent variable               |
 | V\^T     | Right singular vector | Quantifies contribution of each latent variable to a sample |
 
-## SVD Applications
+## SVD visualization
 
--   Gene expression data
--   Face recognition (Eigenfaces)
--   Flow field analysis over time
--   Mutation data analysis
+```{r, echo=FALSE, out.width="60%", fig.align="center"}
+# Choose a specific image, for example, the first one
+specific_image <- image_files[4]
+knitr::include_graphics(specific_image)
+```
+
 
 ## SVD Approximation
 
 -   SVD generates the best approximation to an input data matrix X
 -   Truncating columns of singular matrices leads to best approximation in least square sense
 -   Eckart-Young theorem: Hierarchy of best low-rank approximations
+
+
+
+
+## SVD is the "mother" of all decompositions
+
+```{r, echo=FALSE, out.width="60%", fig.align="center"}
+# Choose a specific image, for example, the first one
+specific_image <- image_files[6]
+knitr::include_graphics(specific_image)
+```
+
+## SVD is the "mother" of all decompositions
+
+```{r, echo=FALSE, out.width="80%", fig.align="center"}
+# Choose a specific image, for example, the first one
+specific_image <- image_files[7]
+knitr::include_graphics(specific_image)
+```
 
 ## Optimal Threshold for SVD
 
@@ -89,6 +118,21 @@ knitr::include_graphics(specific_image)
     -   Set minimum percentage of reconstructed variance (e.g., 90% or 99%)
     -   Elbow method
     -   Optimal truncation value (Donoho et al.)
+    
+## Scree plot explains the percentage of variance per component
+
+```{r, echo=FALSE, out.width="60%", fig.align="center"}
+# Choose a specific image, for example, the first one
+specific_image <- image_files[5]
+knitr::include_graphics(specific_image)
+```
+
+## SVD Applications
+
+-   Gene expression data
+-   Face recognition (Eigenfaces)
+-   Flow field analysis over time
+-   Mutation data analysis
 
 ## PCA and SVD Relationship
 
