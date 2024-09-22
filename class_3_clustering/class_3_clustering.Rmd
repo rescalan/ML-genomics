@@ -1,23 +1,66 @@
 ---
 title: "Class 3 - ML in Genomics: Clustering"
-author: "Renan Escalante"
+subtitle: "An introduction to clustering methods"
+author: Renan Escalante
 date: "`r Sys.Date()`"
 output:
-  ioslides_presentation:
-    widescreen: true
-    smaller: true
+  xaringan::moon_reader:
+    css: ["default", "assets/css/my-theme.css", "assets/css/my-fonts.css"]
+    seal: false 
+    lib_dir: libs
+    nature:
+      highlightStyle: solarized-light
+      highlightLanguage: ["r", "css", "yaml"]
+      highlightLines: true
+      countIncrementalSlides: false
+      ratio: "16:9"
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE)
+options(htmltools.dir.version = FALSE)
+knitr::opts_chunk$set(collapse = TRUE,
+                      message = FALSE, 
+                      warning = FALSE, 
+                      fig.align = TRUE, 
+                      cache = TRUE, 
+                      fig.retina = 3)
+
 library(tidyverse)
 library(tidymodels)
 library(tidyclust)
 library(palmerpenguins)
 library(factoextra)
+library(ggforce)
+library(xaringanExtra)
+xaringanExtra::use_panelset()
+xaringanExtra::use_share_again()
+xaringanExtra::style_share_again(
+  share_buttons = c("twitter", "linkedin", "pocket")
+)
 ```
 
-## Overview
+```{r broadcast, echo=FALSE}
+xaringanExtra::use_broadcast()
+```
+
+class: title-slide, center
+
+# `r rmarkdown::metadata$title`
+
+## `r rmarkdown::metadata$author`
+
+### `r rmarkdown::metadata$subtitle`
+### `r rmarkdown::metadata$date`
+
+---
+
+layout: true
+
+<a class="footer-link" href="http://example.com/clustering-slides">bit.ly/clustering-slides</a>
+
+---
+
+# Overview
 
 1. Introduction to Clustering
 2. K-means Clustering
@@ -25,7 +68,11 @@ library(factoextra)
 4. Evaluation and Comparison of Clustering Methods
 5. Application in Genomics
 
-## Introduction to Clustering
+---
+
+class: middle
+
+# Introduction to Clustering
 
 - Unsupervised learning technique
 - Groups similar data points together
@@ -35,7 +82,11 @@ library(factoextra)
   - Data compression
   - Preprocessing for other algorithms
 
-## K-means Clustering
+---
+
+class: middle
+
+# K-means Clustering
 
 - Partitioning method
 - Aims to minimize within-cluster variation
@@ -45,33 +96,123 @@ library(factoextra)
   3. Recalculate centroids
   4. Repeat until convergence
 
-## K-means Clustering: Code
+---
 
-```{r kmeans-example, echo=TRUE}
-set.seed(123)
-penguins_clean <- penguins %>%
+class: middle
+
+# K-means Clustering: Step-by-Step Visualization
+
+.panelset[
+.panel[.panel-name[Step 1: Choose Initial Centroids]
+
+```{r kmeans-step1, echo=FALSE, fig.align='center'}
+set.seed(838383)
+pens <- penguins %>%
   select(bill_length_mm, bill_depth_mm) %>%
   drop_na()
 
+init <- sample(seq_len(nrow(pens)), 3)
+
+ggplot(pens) +
+  geom_point(aes(x = bill_length_mm, y = bill_depth_mm)) +
+  geom_point(
+    data = pens[init, ],
+    aes(
+      x = bill_length_mm, y = bill_depth_mm,
+      color = c("Cluster 1", "Cluster 2", "Cluster 3")
+    ),
+    shape = "o", size = 12, stroke = 1
+  ) +
+  theme_minimal() +
+  theme(legend.position = "none")
+```
+]
+
+.panel[.panel-name[Step 2: Assign Points]
+
+```{r kmeans-step2, echo=FALSE, fig.align='center'}
+closest_center <- Rfast::dista(as.matrix(pens), as.matrix(pens[init, ])) %>%
+  apply(1, which.min)
+
+ggplot(pens) +
+  geom_point(
+    aes(
+      x = bill_length_mm, y = bill_depth_mm,
+      color = as.factor(closest_center)
+    ),
+    size = 4
+  ) +
+  theme_minimal() +
+  theme(legend.position = "none")
+```
+]
+
+.panel[.panel-name[Step 3: Recalculate Centroids]
+
+```{r kmeans-step3, echo=FALSE, fig.align='center'}
+centers <- pens %>%
+  mutate(
+    clust = closest_center
+  ) %>%
+  group_by(clust) %>%
+  summarize_all(mean)
+
+ggplot(pens) +
+  geom_point(aes(x = bill_length_mm, y = bill_depth_mm)) +
+  geom_point(
+    data = centers,
+    aes(
+      x = bill_length_mm, y = bill_depth_mm,
+      color = c("Cluster 1", "Cluster 2", "Cluster 3")
+    ),
+    shape = "x", size = 12, stroke = 1
+  ) +
+  theme_minimal() +
+  theme(legend.position = "none")
+```
+]
+]
+
+---
+
+class: middle
+
+# K-means Clustering with tidyclust
+
+.panelset[
+.panel[.panel-name[Code]
+
+```{r kmeans-tidyclust, eval=FALSE}
 kmeans_spec <- k_means(num_clusters = 3) %>%
   set_engine("stats")
 
 kmeans_fit <- kmeans_spec %>%
-  fit(~., data = penguins_clean)
+  fit(~ bill_length_mm + bill_depth_mm, data = penguins)
 
-kmeans_plot <- augment(kmeans_fit, new_data = penguins_clean) %>%
+kmeans_clusters <- kmeans_fit %>%
+  extract_cluster_assignment()
+
+kmeans_centroids <- kmeans_fit %>%
+  extract_centroids()
+```
+]
+
+.panel[.panel-name[Visualization]
+
+```{r kmeans-viz, eval=FALSE}
+augment(kmeans_fit, new_data = penguins) %>%
   ggplot(aes(bill_length_mm, bill_depth_mm, color = .pred_cluster)) +
   geom_point() +
   labs(title = "K-means Clustering of Penguin Bill Dimensions")
 ```
+]
+]
 
-## K-means Clustering: Result
+---
 
-```{r kmeans-plot, echo=FALSE}
-kmeans_plot
-```
+class: middle
 
-## Hierarchical Clustering
+# Hierarchical Clustering
 
 - Builds a tree-like structure (dendrogram)
 - Two main types:
@@ -83,27 +224,100 @@ kmeans_plot
   - Average
   - Ward's
 
-## Hierarchical Clustering: Code
+---
 
-```{r hclust-example, echo=TRUE}
+class: middle
+
+# Hierarchical Clustering: Step-by-Step
+
+.panelset[
+.panel[.panel-name[Step 1: Each Point as a Cluster]
+
+```{r hclust-step1, echo=FALSE, fig.align='center'}
+fake_dat <- tibble(
+  x = sort(runif(5)),
+  y = runif(5),
+  lab = letters[1:5]
+)
+
+fake_dat %>%
+  ggplot(aes(x, y)) +
+  geom_point(shape = fake_dat$lab, size = 4) +
+  geom_point(shape = 1, size = 7, stroke = 1, color = "dark grey") +
+  theme_minimal() +
+  ylim(c(-0.1, 1.1)) +
+  xlim(c(-0.1, 1.1))
+```
+]
+
+.panel[.panel-name[Step 2: Merge Closest Clusters]
+
+```{r hclust-step2, echo=FALSE, fig.align='center'}
+fake_dat_2 <- bind_rows(
+  fake_dat[-c(1:2), -3],
+  summarize_all(fake_dat[1:2, -3], mean)
+) %>%
+  mutate(
+    size = c(rep(1, 3), suppressWarnings(dist(fake_dat)[1]))
+  )
+
+fake_dat %>%
+  ggplot(aes(x, y)) +
+  geom_point(shape = fake_dat$lab, size = 4) +
+  geom_point(
+    data = fake_dat_2,
+    aes(x = x, y = y),
+    shape = 1,
+    size = 7 / fake_dat_2$size,
+    stroke = 1,
+    color = "dark grey"
+  ) +
+  theme_minimal() +
+  ylim(c(-0.1, 1.1)) +
+  xlim(c(-0.1, 1.1))
+```
+]
+]
+
+---
+
+class: middle
+
+# Hierarchical Clustering with tidyclust
+
+.panelset[
+.panel[.panel-name[Code]
+
+```{r hclust-tidyclust, eval=FALSE}
 hclust_spec <- hier_clust(num_clusters = 3, linkage_method = "average") %>%
   set_engine("stats")
 
 hclust_fit <- hclust_spec %>%
-  fit(~., data = penguins_clean)
+  fit(~ bill_length_mm + bill_depth_mm, data = penguins)
 
-hclust_plot <- hclust_fit %>%
+hclust_clusters <- hclust_fit %>%
+  extract_cluster_assignment()
+
+hclust_centroids <- hclust_fit %>%
+  extract_centroids()
+```
+]
+
+.panel[.panel-name[Visualization]
+
+```{r hclust-viz, eval=FALSE}
+hclust_fit %>%
   extract_fit_engine() %>%
   fviz_dend(k = 3, main = "Hierarchical Clustering Dendrogram")
 ```
+]
+]
 
-## Hierarchical Clustering: Result
+---
 
-```{r hclust-plot, echo=FALSE}
-hclust_plot
-```
+class: middle
 
-## Evaluation and Comparison
+# Evaluation and Comparison
 
 - Internal validation measures:
   - Silhouette score
@@ -114,108 +328,112 @@ hclust_plot
   - Adjusted Rand index
 - Visual inspection and domain expertise
 
-## Silhouette Analysis: Code
+---
 
-```{r silhouette, echo=TRUE}
+class: middle
+
+# Silhouette Analysis
+
+.panelset[
+.panel[.panel-name[Code]
+
+```{r silhouette, eval=FALSE}
 kmeans_sil <- kmeans_fit %>% 
-  silhouette_avg(penguins_clean)
+  silhouette_avg(penguins)
 
 hclust_sil <- hclust_fit %>% 
-  silhouette_avg(penguins_clean)
+  silhouette_avg(penguins)
 
-sil_table <- tibble(
+tibble(
   Method = c("K-means", "Hierarchical"),
   Silhouette = c(kmeans_sil$.estimate, hclust_sil$.estimate)
-)
+) %>%
+  knitr::kable()
 ```
+]
 
-## Silhouette Analysis: Result
+.panel[.panel-name[Visualization]
 
-```{r silhouette-result, echo=FALSE}
-knitr::kable(sil_table)
+```{r silhouette-viz, eval=FALSE}
+plot_silhouette <- function(fit, data, title) {
+  clusters <- fit %>% extract_cluster_assignment()
+  sil <- cluster::silhouette(as.numeric(clusters$.cluster), dist(data))
+  fviz_silhouette(sil) +
+    labs(title = title)
+}
+
+plot_silhouette(kmeans_fit, penguins, "K-means Silhouette Plot")
 ```
+]
+]
 
-## Determining Optimal Number of Clusters
+---
 
-- Elbow method
-- Gap statistic
-- Silhouette method
+class: middle
 
-## Elbow Method: Code
+# Application in Genomics: NCI60 Dataset
 
-```{r elbow-method, echo=TRUE}
-elbow_data <- tibble(k = 1:10) %>%
-  mutate(
-    kmeans = map(k, ~k_means(num_clusters = .x) %>% 
-                   fit(~., data = penguins_clean) %>% 
-                   sse_within_total()),
-    kmeans_sse = map_dbl(kmeans, ~.x$.estimate)
-  )
-
-elbow_plot <- ggplot(elbow_data, aes(k, kmeans_sse)) +
-  geom_line() +
-  geom_point() +
-  labs(title = "Elbow Method for K-means",
-       x = "Number of Clusters (k)",
-       y = "Within-cluster Sum of Squares")
-```
-
-## Elbow Method: Result
-
-```{r elbow-plot, echo=FALSE}
-elbow_plot
-```
-
-## Application in Genomics
-
-- Gene expression analysis
-- Identifying cell types in single-cell RNA-seq data
-- Protein structure and function prediction
-- Cancer subtype discovery
-- Biomarker identification
-
-## Case Study: Clustering Gene Expression Data
-
-- Dataset: NCI60 cancer cell line microarray data
 - 6,830 gene expression measurements
 - 64 cancer cell lines
 
-## NCI60 Data Analysis: Code
+.panelset[
+.panel[.panel-name[Code]
 
-```{r nci60-example, echo=TRUE}
+```{r nci60-example, eval=FALSE}
 data(NCI60, package = "ISLR")
 nci60 <- as_tibble(NCI60$data, rownames = "gene") %>%
   mutate(across(-gene, scale)) %>%
   column_to_rownames("gene") %>%
-  # t() %>%
-  as_tibble() %>%
+  t() %>%
+  as_tibble()  %>% 
   mutate(cancer_type = factor(NCI60$labs))
 
 pca_result <- prcomp(nci60 %>% select(-cancer_type), scale. = TRUE)
+```
+]
 
-nci60_plot <- augment(pca_result, nci60) %>%
+.panel[.panel-name[Visualization]
+
+```{r nci60-viz, eval=FALSE}
+augment(pca_result, nci60) %>%
   ggplot(aes(.fittedPC1, .fittedPC2, color = cancer_type)) +
   geom_point() +
   labs(title = "PCA of NCI60 Gene Expression Data",
        x = "PC1", y = "PC2")
 ```
+]
+]
 
-## NCI60 Data Analysis: Result
+---
 
-```{r nci60-plot, echo=FALSE}
-nci60_plot
-```
+class: middle
 
-## Conclusion
+# Conclusion
 
 - Clustering is a powerful tool for unsupervised learning
 - K-means and hierarchical clustering have different strengths
 - Proper evaluation and interpretation are crucial
 - Clustering has many applications in genomics and bioinformatics
 
-## References
+---
+
+class: middle
+
+# References
 
 1. James, G., Witten, D., Hastie, T., & Tibshirani, R. (2013). An Introduction to Statistical Learning.
 2. Hastie, T., Tibshirani, R., & Friedman, J. (2009). The Elements of Statistical Learning.
 3. Jiang, D., Tang, C., & Zhang, A. (2004). Cluster Analysis for Gene Expression Data: A Survey.
 4. Stuart, T., & Satija, R. (2019). Integrative single-cell analysis.
+
+---
+
+class: bottom, left, inverse
+
+## Thank you!
+
+### Find me at...
+[GitHub: @renancesol](https://github.com/renancesol)  
+[Twitter: @renancesol](https://twitter.com/renancesol)
+
+[Page: http://example.com/renan](http://example.com/renan)

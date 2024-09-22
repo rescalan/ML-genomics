@@ -319,6 +319,111 @@ augment(pca_result, nci60) %>%
        x = "PC1", y = "PC2")
 ```
 
+## Tuning Cluster Models
+
+- In unsupervised settings, there's no objective measure of success
+- We can still vary inputs and quantify results
+- Goal: Select appropriate number of clusters based on metrics
+
+## Cross-Validation for Clustering
+
+```{r cv-setup, eval=FALSE}
+penguins_cv <- vfold_cv(penguins, v = 5)
+
+kmeans_spec <- k_means(num_clusters = tune()) %>%
+  set_engine("stats")
+
+penguins_rec <- recipe(~ bill_length_mm + bill_depth_mm, data = penguins)
+
+kmeans_wflow <- workflow(penguins_rec, kmeans_spec)
+
+clust_num_grid <- grid_regular(num_clusters(), levels = 10)
+```
+
+## Tuning with tune_cluster()
+
+```{r tune-cluster, eval=FALSE}
+res <- tune_cluster(
+  kmeans_wflow,
+  resamples = penguins_cv,
+  grid = clust_num_grid,
+  metrics = cluster_metric_set(sse_within_total, sse_total, sse_ratio)
+)
+
+res_metrics <- res %>% collect_metrics()
+```
+
+## Visualizing Tuning Results
+
+```{r tune-viz, eval=FALSE}
+res_metrics %>%
+  filter(.metric == "sse_ratio") %>%
+  ggplot(aes(x = num_clusters, y = mean)) +
+  geom_point() +
+  geom_line() +
+  theme_minimal() +
+  ylab("mean WSS/TSS ratio, over 5 folds") +
+  xlab("Number of clusters") +
+  scale_x_continuous(breaks = 1:10)
+```
+
+## Interpreting the Elbow Plot
+
+- Look for an "elbow" or notable bend in the plot
+- WSS/TSS ratio decreases with more clusters
+- Choose number of clusters where decrease starts to level off
+- For penguins, 3 or 4 clusters might be appropriate
+
+## Silhouette Analysis
+
+```{r silhouette-analysis, eval=FALSE}
+kmeans_silhouette <- kmeans_fit %>% 
+  silhouette_avg(penguins_scaled)
+
+plot_silhouette <- function(fit, data, title) {
+  clusters <- fit %>% extract_cluster_assignment()
+  sil <- cluster::silhouette(as.numeric(clusters$.cluster), dist(data))
+  fviz_silhouette(sil) +
+    labs(title = title)
+}
+
+plot_silhouette(kmeans_fit, penguins_scaled, "K-means Silhouette Plot")
+```
+
+## Metrics for Clustering
+
+- Sum of Squared Errors (SSE)
+  - Within-cluster SSE
+  - Total SSE
+  - SSE ratio (WSS/TSS)
+- Silhouette score
+- Can be used with different distance measures
+
+```{r cluster-metrics, eval=FALSE}
+kmeans_fit %>% sse_within_total()
+kmeans_fit %>% sse_total()
+kmeans_fit %>% sse_ratio()
+kmeans_fit %>% silhouette_avg(penguins_scaled)
+```
+
+## Custom Distance Measures
+
+```{r custom-distance, eval=FALSE}
+my_dist <- function(x, y) {
+  Rfast::dista(x, y, method = "manhattan")
+}
+
+kmeans_fit %>% sse_ratio(dist_fun = my_dist)
+```
+
+## Conclusion on Tuning and Metrics
+
+- Tuning helps find optimal number of clusters
+- Multiple metrics provide different perspectives on cluster quality
+- Visualization aids in interpreting results
+- Consider domain knowledge when selecting final model
+
+
 ## Conclusion
 
 - Clustering is a powerful tool for unsupervised learning
