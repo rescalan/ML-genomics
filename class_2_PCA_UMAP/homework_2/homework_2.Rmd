@@ -1,0 +1,123 @@
+---
+title: "Homework 2 - ML in Genomics: PCA and UMAP"
+author: "Renan Escalante"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Part 1: PCA with Palmer Penguins Dataset
+
+In this part, we'll explore Principal Component Analysis (PCA) using the Palmer Penguins dataset.
+
+1. Load the necessary libraries (tidyverse, palmerpenguins, corrr, ggplot2, tidymodels) and the Palmer Penguins dataset.
+
+2. Create a correlation matrix for the numeric variables in the Palmer Penguins dataset. Visualize this correlation matrix using the corrplot package. 
+
+Hint: Use `select(where(is.numeric))` to choose numeric columns.
+
+3. Perform a Principal Component Analysis on the Palmer Penguins dataset using the following code structure:
+
+```{r, eval=FALSE}
+penguin_recipe <-
+  recipe(~., data = penguins) %>% 
+  update_role(species, island, sex, new_role = "id") %>% 
+  step_naomit(all_predictors()) %>% 
+  # Add step to normalize predictors
+  # Add step to perform PCA
+  prep()
+
+penguin_pca <- 
+  penguin_recipe %>% 
+  tidy(id = "pca") 
+
+penguin_pca
+```
+
+4. Examine the different processing steps in the recipe. Use `tidy()` with different `id` arguments to explore the normalization and NA removal steps. Explain what each step does.
+
+5. Create a scree plot showing the proportion of variance explained by each principal component. Use the following code structure:
+
+```{r, eval=FALSE}
+penguin_recipe %>% 
+  tidy(id = "pca", type = "variance") %>% 
+  # Filter for percent variance
+  # Create a ggplot
+```
+
+6. Create a loadings plot to show the contribution of each variable to the principal components. Use ggplot2 to create this visualization.
+
+7. Create a biplot of the first two principal components, coloring the points by penguin species. Use the following code structure:
+
+```{r, eval=FALSE}
+pca_results <- bake(pca_prep, new_data = NULL)
+
+ggplot(pca_results, aes(PC1, PC2, color = species)) +
+  # Add appropriate geom
+  # Add labels
+```
+
+8. Interpret the results of your PCA. Which variables contribute most to the first two principal components? How well do the principal components separate the penguin species?
+
+## Part 2: UMAP with Palmer Penguins Dataset
+
+Now, we'll apply Uniform Manifold Approximation and Projection (UMAP) to the Palmer Penguins dataset.
+
+1. Load the necessary library for UMAP (embed).
+
+2. Prepare the Palmer Penguins data for UMAP by selecting only the numeric variables and scaling them.
+
+3. Perform UMAP on the prepared data using a recipe similar to the PCA recipe, but use `step_umap()` instead of `step_pca()`.
+
+4. Create a scatter plot of the UMAP results, coloring points by penguin species. Use ggplot2 to create this visualization.
+
+5. Compare the UMAP results to the PCA results. How do they differ? What insights can you gain from each method?
+
+## Part 3: UMAP with Cocktails Dataset
+
+Apply  UMAP to the Boston Cocktails dataset:
+
+1. Load the Boston Cocktails dataset using `readr::read_csv()` with the provided URL.
+
+```{r, eval= FALSE}
+boston_cocktails <- readr::read_csv("https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2020/2020-05-26/boston_cocktails.csv")
+```
+
+2. Preprocess the cocktails data using the following code structure:
+
+```{r, eval=FALSE}
+cocktails_processed <- boston_cocktails %>%
+  mutate(
+    ingredient = str_to_lower(ingredient),
+    ingredient = str_replace_all(ingredient, "-", " "),
+    # Add more string processing steps
+    measure_number = parse_number(measure),
+    measure_number = if_else(str_detect(measure, "dash$"),
+      measure_number / 50,
+      measure_number
+    )
+  ) %>%
+  add_count(ingredient) %>%
+  filter(n > 15) %>%
+  select(-n) %>%
+  distinct(row_id, ingredient, .keep_all = TRUE) %>%
+  na.omit()
+
+cocktails_wide <- cocktails_processed %>%
+  select(-ingredient_number, -row_id, -measure) %>%
+  pivot_wider(names_from = ingredient, values_from = measure_number, values_fill = 0) %>%
+  janitor::clean_names() %>%
+  na.omit()
+```
+
+3. Perform UMAP on the preprocessed cocktails data using a recipe similar to the one used for the penguins dataset.
+
+4. Create a scatter plot of the UMAP results for the cocktails data, coloring points by category.
+
+5. Compare the UMAP results for the cocktails dataset with those from the Palmer Penguins dataset. What differences do you notice? How might these differences be explained by the nature of the datasets?
+
+Remember to include your code, visualizations, and explanations for each step. Good luck!

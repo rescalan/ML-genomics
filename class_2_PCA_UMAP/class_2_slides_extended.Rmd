@@ -1,5 +1,5 @@
 ---
-title: "Class 2 - ML in Genomics: SVD, PCA, and Matrix Factorization"
+title: "Class 2 - ML in Genomics: SVD, PCA and Matrix Factorization"
 author: "Renan Escalante"
 date: "`r Sys.Date()`"
 output:
@@ -29,12 +29,26 @@ library(embed)
 </style>
 ```
 
+# Outline
+
+## Class Overview
+
+1. Introduction to Machine Learning
+2. Singular Value Decomposition (SVD)
+3. Principal Component Analysis (PCA)
+4. Matrix Factorization Techniques
+5. Uniform Manifold Approximation and Projection (UMAP)
+6. Applications in Genomics
+7. Practical Implementation in R
+
 ```{r}
 image_dir <- here::here("class_2_PCA_UMAP/class_2_SVD_PCA_UMAP_images/")
 image_files <- list.files(path = image_dir, 
                           pattern = "\\.jpg$|\\.png$|\\.gif$|\\.jpeg$", 
                           full.names = TRUE)
 ```
+
+# Machine Learning
 
 ## Machine learning intro
 
@@ -52,13 +66,15 @@ specific_image <- image_files[1]
 knitr::include_graphics(specific_image)
 ```
 
+# Singular Value Decomposition (SVD)
+
 ## Singular Value Decomposition (SVD)
 
 -   SVD factorizes a matrix into the product of 3 matrices: $X = UDV^T$
--   When X has dimensionality n x m (n rows by m columns):
-    -   U has dimensionality n x n
-    -   D has dimensionality n x m
-    -   V has dimensionality m x m
+-   When X has dimensionality m x n (m rows by n columns):
+    -   U has dimensionality m x n
+    -   D has dimensionality n x n
+    -   V has dimensionality n x n
     
     
 ## SVD visualization
@@ -111,6 +127,28 @@ specific_image <- image_files[7]
 knitr::include_graphics(specific_image)
 ```
 
+## PCA and SVD Relationship
+
+-   PCA is SVD in disguise (after centering columns of X to have mean 0)
+-   Eigenvalues = square of diagonal matrix S
+-   Columns of U are PC loading vectors
+-   Columns of V (up to scaling) are PC score vectors
+
+## Comparison of Matrix Factorization Techniques
+
+In the case of a matrix where the rows represent genes and the columns samples we will then examine relationships between samples
+
+| Method | U       | S          | Weights                  |
+|---------------|--------------------|-----------------------|---------------|
+| SVD    | U (left singular vectors) | V\^T (right singular vectors) | S or Σ (singular values) |
+| PCA    | Scores                    | Loadings or Rotation          | Eigenvalues              |
+| ICA    | Unmixing/mixing matrix    | Source matrix                 | \-                       |
+| NMF    | Weights                   | Features                      | \-                       |
+| Matrix genes per sample from transcriptomics   | U tells us the importance of each gene in a pathway                   |      V\^T tells us how much a pathway is activated in each sample                 | This tells us how important that pathway is to explain the variance in the data                      |
+
+Not you can you use the help from `?broom:::tidy.prcomp()` to figure out the PCA mapping
+
+
 ## Optimal Threshold for SVD
 
 -   Determine value of r (number of components to keep)
@@ -134,13 +172,6 @@ knitr::include_graphics(specific_image)
 -   Flow field analysis over time
 -   Mutation data analysis
 
-## PCA and SVD Relationship
-
--   PCA is SVD in disguise (after centering columns of X to have mean 0)
--   Eigenvalues = square of diagonal matrix S
--   Columns of U are PC loading vectors
--   Columns of V (up to scaling) are PC score vectors
-
 ## PCA Terminology vs SVD Terminology
 
 | PCA Term             | SVD Equivalent               | Notes                                                    |
@@ -155,6 +186,10 @@ knitr::include_graphics(specific_image)
 -   Common techniques: PCA, ICA, NMF
 -   Input matrix: genes as rows, samples as columns
 
+Check the article "Enter the Matrix: Factorization Uncovers Knowledge from Omics"
+
+https://www.cell.com/trends/genetics/fulltext/S0168-9525(18)30124-0
+
 ## Matrix Factorization in Genomics
 
 ```{r, echo=FALSE, out.width="80%", fig.align="center"}
@@ -163,18 +198,6 @@ specific_image <- image_files[8]
 knitr::include_graphics(specific_image)
 ```
 
-## Comparison of Matrix Factorization Techniques
-
-In the case of a matrix where the rows represent samples and the columns genes we will then examine relationships between samples
-
-| Method | Gene Relationships        | Sample Relationships          | Weights                  |
-|---------------|--------------------|-----------------------|---------------|
-| SVD    | U (left singular vectors) | V\^T (right singular vectors) | D or Σ (singular values) |
-| PCA    | Scores                    | Loadings or Rotation          | Eigenvalues              |
-| ICA    | Unmixing/mixing matrix    | Source matrix                 | \-                       |
-| NMF    | Weights                   | Features                      | \-                       |
-
-Not you can you use the help from `?broom:::tidy.prcomp()` to figure out the PCA mapping
 
 ## Functions Used in Homework 2
 
@@ -218,11 +241,55 @@ tidy(pca_prep, 2) %>%
   xlab("Principal Component")
 
 # Biplot
-pca_results <- juice(pca_prep)
+pca_results <- bake(pca_prep, new_data = NULL)
 ggplot(pca_results, aes(PC1, PC2, color = penguins$species)) +
   geom_point(alpha = 0.7) +
   labs(color = "Species")
 ```
+
+# UMAP
+
+## UMAP: Uniform Manifold Approximation and Projection for Dimension Reduction
+
+- Useful way to visualize data when we have complex data
+
+- It is fast and similar samples cluster together, in contrast with PCA where we want to maximize variability
+
+- The goal of UMAP is to create a low-dimension graph of this data that preserves high dimensional clusters and their relationship to each other
+
+- Initialize low dimensiona points and move them until they form clusters
+
+## Method to calculate similarities for each point relative to all other points
+
+1. Calculate pairwise distance between every dot
+2. Using the pairwise distances we project data on an axis
+3. A similarity score is computed using a curve whose shape depends on the number of neighbors that we want each point to have. The sum of the similarity scores is equal to log2(num. neighbors)
+4. UMAP makes similarity scores symmetrical.
+
+UMAP scales the curves so that regardless of how close the neighboring points are, the sum of the similarity scores will be equal to the log2 (number of neighbors) that you specify. Every point is similar to at least another point.
+
+## Method to cluster points
+
+1. UMAP randomly selects 2 points in the data based on the symmetric similarity score to move them close together.
+2. Then it uses the same point and picks another point that it needs to move it further away from
+3.  Distances between points are compute from a low dimensional similarity score distribution that is derived from a t- distribution. The t-distribution tends to be shorter and have fatter tails.
+
+## UMAP Hyperparameters
+
+A hyperparmeter then it’s the number of neighbors used in the projection. With a tiny data set we want to use a small number. The number  neighbors includes the point itself as well. The most important parameter.
+
+A small number of neighbors creates a more segmented view of the data where we can see clusters more cleanly
+
+A large number of neighbors provides a bigger picture 
+
+## UMAP Hyperparameters
+
+```{r, echo=FALSE, out.width="80%", fig.align="center"}
+# Choose a specific image, for example, the first one
+specific_image <- image_files[9]
+knitr::include_graphics(specific_image)
+```
+
 
 ## UMAP Functions
 
@@ -239,16 +306,31 @@ umap_prep <- prep(umap_rec)
 ## Visualizing UMAP Results
 
 ```{r, echo=TRUE, eval=FALSE}
-umap_results <- juice(umap_prep)
+umap_results <- bake(umap_prep, new_data = NULL)
 
 ggplot(umap_results, aes(umap_1, umap_2, color = penguins$species)) +
   geom_point(alpha = 0.7) +
   labs(color = "Species")
 ```
 
-## Conclusion
 
--   SVD and PCA are powerful techniques for dimensionality reduction
--   Matrix factorization methods reveal different patterns in genomic data
--   Understanding the relationship between these methods is crucial for effective data analysis
--   Practical implementation using R packages like tidymodels and embed enhances our analytical capabilities
+
+# Summary
+
+## Key Takeaways
+
+- SVD is a fundamental matrix decomposition technique with wide applications
+- PCA is closely related to SVD and useful for dimensionality reduction
+- Various matrix factorization methods (SVD, PCA, ICA, NMF) reveal different patterns in genomic data
+- UMAP is a powerful technique for visualizing high-dimensional data
+- Proper selection of dimensionality reduction technique depends on the specific problem and data characteristics
+- R packages like tidymodels and embed provide practical tools for implementing these techniques
+- Understanding the relationships between these methods is crucial for effective data analysis in genomics
+
+## Next Steps
+
+- Apply these techniques to real genomic datasets
+- Explore the impact of different parameters on dimensionality reduction results
+- Investigate the biological significance of patterns revealed by these methods
+- Combine dimensionality reduction with downstream analyses (e.g., clustering, classification)
+
