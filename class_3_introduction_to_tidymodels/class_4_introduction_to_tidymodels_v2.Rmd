@@ -1,5 +1,5 @@
 ---
-title: "A Gentle Introduction to tidymodels: Clustering with Palmer Penguins"
+title: "Class 3: A Gentle Introduction to tidymodels: Clustering with Palmer Penguins"
 author: "Renan Escalante"
 date: "`r Sys.Date()`"
 output:
@@ -168,7 +168,7 @@ ggplot(penguins_clust, aes(x = bill_length_mm, y = bill_depth_mm, color = .pred_
   labs(title = "Initial K-means Clustering of Penguins", color = "Cluster")
 ```
 
-## Parameter Tuning
+## New recipe with cross validation
 
 ```{r}
 penguins_cleaned <- penguins %>%
@@ -183,6 +183,8 @@ penguins_recipe <- recipe(~., data = penguins_train) %>%
   step_naomit(all_predictors()) %>%  # Remove rows with NA values
   step_normalize(all_numeric_predictors())
 ```
+
+## Parameter Tuning
 
 ```{r}
 kmeans_spec_tune <- k_means(num_clusters = tune()) %>%
