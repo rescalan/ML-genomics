@@ -1,0 +1,104 @@
+---
+title: "Class 3 (part 1) Introduction to tidymodels"
+author: "Renan Escalante"
+date: "`r Sys.Date()`"
+output:
+  ioslides_presentation:
+    widescreen: true
+    smaller: true
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{=html}
+<style>
+.scaled-image {
+  max-width: 100%;
+  max-height: 80vh;
+  display: block;
+  margin: auto;
+}
+</style>
+```
+
+```{r, include=FALSE}
+image_dir <- here::here("class_3_introduction_to_tidymodels/class_3_images/")
+image_files <- list.files(path = image_dir, 
+                          pattern = "\\.jpg$|\\.png$|\\.gif$|\\.jpeg$", 
+                          full.names = TRUE)
+```
+
+
+## Introduction to tidymodels
+
+```{r, echo=FALSE, out.width="70%", fig.align="center"}
+# Choose a specific image, for example, the first one
+specific_image <- image_files[1]
+knitr::include_graphics(specific_image)
+```
+
+## Introduction to tidymodels
+
+```{r, echo=FALSE, out.width="80%", fig.align="center"}
+# Choose a specific image, for example, the first one
+specific_image <- image_files[2]
+knitr::include_graphics(specific_image)
+```
+
+## Introduction to tidymodels
+
+```{r, echo=FALSE, out.width="80%", fig.align="center"}
+# Choose a specific image, for example, the first one
+specific_image <- image_files[3]
+knitr::include_graphics(specific_image)
+```
+
+## {tidymodels} contains several blocks
+
+```{r, echo=FALSE, out.width="80%", fig.align="center"}
+# Choose a specific image, for example, the first one
+specific_image <- image_files[4]
+knitr::include_graphics(specific_image)
+```
+
+## {tidymodels} cycle
+
+```{r, echo=FALSE, out.width="80%", fig.align="center"}
+# Choose a specific image, for example, the first one
+specific_image <- image_files[8]
+knitr::include_graphics(specific_image)
+```
+
+## Data budget: Train and test
+
+```{r, echo=FALSE, out.width="80%", fig.align="center"}
+# Choose a specific image, for example, the first one
+specific_image <- image_files[9]
+knitr::include_graphics(specific_image)
+```
+
+## Data budget: Cross fold validation
+
+```{r, echo=FALSE, out.width="80%", fig.align="center"}
+# Choose a specific image, for example, the first one
+specific_image <- image_files[7]
+knitr::include_graphics(specific_image)
+```
+
+## {recipes} pre-process data
+
+```{r, echo=FALSE, out.width="80%", fig.align="center"}
+# Choose a specific image, for example, the first one
+specific_image <- image_files[5]
+knitr::include_graphics(specific_image)
+```
+
+## {parsnip} creates different models
+
+```{r, echo=FALSE, out.width="80%", fig.align="center"}
+# Choose a specific image, for example, the first one
+specific_image <- image_files[6]
+knitr::include_graphics(specific_image)
+```
