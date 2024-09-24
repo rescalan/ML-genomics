@@ -57,6 +57,96 @@ pens <- penguins %>%
 init <- sample(seq_len(nrow(pens)), 3)
 ```
 
+```{r, include=FALSE}
+image_dir <- here::here("class_3_clustering/clustering_images/")
+image_files <- list.files(path = image_dir, 
+                          pattern = "\\.jpg$|\\.png$|\\.gif$|\\.jpeg$", 
+                          full.names = TRUE)
+
+# Custom sorting function
+sort_numerically <- function(x) {
+  # Extract the numeric prefix
+  nums <- as.numeric(sub("^(\\d+)_.*", "\\1", basename(x)))
+  # Return the sorted indices
+  order(nums)
+}
+
+# Apply the custom sorting
+image_files_sorted <- image_files[sort_numerically(image_files)]
+```
+
+## K-means
+
+```{r, echo=FALSE, out.width="80%", fig.align="center"}
+# Choose a specific image, for example, the first one
+specific_image <- image_files_sorted[1]
+knitr::include_graphics(specific_image)
+```
+
+## K-means
+
+```{r, echo=FALSE, out.width="80%", fig.align="center"}
+# Choose a specific image, for example, the first one
+specific_image <- image_files_sorted[2]
+knitr::include_graphics(specific_image)
+```
+
+## K-means
+
+```{r, echo=FALSE, out.width="80%", fig.align="center"}
+# Choose a specific image, for example, the first one
+specific_image <- image_files_sorted[3]
+knitr::include_graphics(specific_image)
+```
+
+## K-means
+
+```{r, echo=FALSE, out.width="80%", fig.align="center"}
+# Choose a specific image, for example, the first one
+specific_image <- image_files_sorted[4]
+knitr::include_graphics(specific_image)
+```
+
+## K-means
+
+```{r, echo=FALSE, out.width="80%", fig.align="center"}
+# Choose a specific image, for example, the first one
+specific_image <- image_files_sorted[5]
+knitr::include_graphics(specific_image)
+```
+
+## K-means
+
+```{r, echo=FALSE, out.width="80%", fig.align="center"}
+# Choose a specific image, for example, the first one
+specific_image <- image_files_sorted[6]
+knitr::include_graphics(specific_image)
+```
+
+## K-means
+
+```{r, echo=FALSE, out.width="80%", fig.align="center"}
+# Choose a specific image, for example, the first one
+specific_image <- image_files_sorted[7]
+knitr::include_graphics(specific_image)
+```
+
+## K-means
+
+```{r, echo=FALSE, out.width="80%", fig.align="center"}
+# Choose a specific image, for example, the first one
+specific_image <- image_files_sorted[8]
+knitr::include_graphics(specific_image)
+```
+
+## K-means
+
+```{r, echo=FALSE, out.width="80%", fig.align="center"}
+# Choose a specific image, for example, the first one
+specific_image <- image_files_sorted[9]
+knitr::include_graphics(specific_image)
+```
+
 ## Step 1: Choose Initial Centroids
 
 ```{r kmeans-step1, echo=FALSE}
@@ -261,6 +351,25 @@ hclust_fit %>%
   - Rand index
   - Adjusted Rand index
 - Visual inspection and domain expertise
+
+## Introduction: Silhouette Analysis
+
+The silhouette metric is a method used to evaluate the quality of clustering results. It provides a measure of how well each object fits within its assigned cluster compared to other clusters. The silhouette value ranges from -1 to 1, where:
+
+A value close to 1 indicates that the object is well-matched to its own cluster and poorly-matched to neighboring clusters.
+A value close to 0 indicates that the object is on or very close to the decision boundary between two neighboring clusters.
+A negative value indicates that the object might have been assigned to the wrong cluster.
+
+
+## Computation of Silhouette Metric
+For each data point i, the silhouette value s(i) is computed as follows:
+
+Calculate a(i): the average distance between i and all other data points in the same cluster.
+Calculate b(i): the minimum average distance from i to all points in any other cluster, of which i is not a member.
+The silhouette value for the data point i is:
+s(i) = (b(i) - a(i)) / max(a(i), b(i))
+
+The overall silhouette score for a clustering is the average of the silhouette values for all data points.
 
 ## Silhouette Analysis
 
