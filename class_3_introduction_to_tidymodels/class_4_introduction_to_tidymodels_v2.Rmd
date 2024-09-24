@@ -1,8 +1,8 @@
 ---
 title: "A Gentle Introduction to tidymodels: Clustering with Palmer Penguins"
-author: "Your Name"
+author: "Renan Escalante"
 date: "`r Sys.Date()`"
-output: 
+output:
   ioslides_presentation:
     widescreen: true
     smaller: true
@@ -18,26 +18,27 @@ library(ClusterR)
 
 ## Introduction
 
-- tidymodels: A collection of packages for modeling and machine learning using tidyverse principles
-- Focus on tasks around fitting the model: data pre-processing and results validation
-- We'll use the palmer_penguins dataset for clustering
+-   tidymodels: A collection of packages for modeling and machine learning using tidyverse principles
+-   Focus on tasks around fitting the model: data pre-processing and results validation
+-   We'll use the palmer_penguins dataset for clustering
 
 ## Pre-Process
 
-- Making data suitable for modeling through transformations
-- tidymodels packages useful for heavy and complex model development
+-   Making data suitable for modeling through transformations
+-   tidymodels packages useful for heavy and complex model development
 
 ## Data Sampling
 
 ```{r}
 set.seed(123)
+
 penguins_split <- initial_split(penguins, prop = 0.7)
 penguins_train <- training(penguins_split)
 penguins_test <- testing(penguins_split)
 ```
 
-- `initial_split()`: Separates data into training and testing sets
-- `training()` and `testing()`: Access the respective datasets
+-   `initial_split()`: Separates data into training and testing sets
+-   `training()` and `testing()`: Access the respective datasets
 
 ## Pre-process interface
 
@@ -51,11 +52,10 @@ penguins_recipe <- recipe(~., data = penguins_train) %>%
 penguins_prep <- prep(penguins_recipe)
 ```
 
-- `recipe()`: Starts a new set of transformations
-- `step_naomit()`: Removes rows with missing values
-- `step_normalize()`: Normalizes numeric predictors
-= `update_role()`: Adds metadata to recipe
-- `prep()`: Executes the transformations on the training data
+-   `recipe()`: Starts a new set of transformations
+-   `step_naomit()`: Removes rows with missing values
+-   `step_normalize()`: Normalizes numeric predictors = `update_role()`: Adds metadata to recipe
+-   `prep()`: Executes the transformations on the training data
 
 ## Execute the pre-processing
 
@@ -64,17 +64,17 @@ penguins_train_baked <- bake(penguins_prep, new_data = NULL)
 penguins_test_baked <- bake(penguins_prep, new_data = penguins_test)
 ```
 
-- `bake(new_data = NULL)`: Applies pre-processing steps to training data that was specified in the recipe
-- `bake(new_data = penguins_test)`: Applies pre-processing steps to new data
+-   `bake(new_data = NULL)`: Applies pre-processing steps to training data that was specified in the recipe
+-   `bake(new_data = penguins_test)`: Applies pre-processing steps to new data
 
 ## Understanding `bake()` notation
 
-- `bake(new_data = NULL)`: 
-  - Uses the data that the recipe was prepped on (training data)
-  - Equivalent to the deprecated `juice()` function
-- `bake(new_data = penguins_test)`:
-  - Applies the pre-processing steps to new data (test data)
-  - Ensures consistent transformations across train and test sets
+-   `bake(new_data = NULL)`:
+    -   Uses the data that the recipe was prepped on (training data)
+    -   Equivalent to the deprecated `juice()` function
+-   `bake(new_data = penguins_test)`:
+    -   Applies the pre-processing steps to new data (test data)
+    -   Ensures consistent transformations across train and test sets
 
 ## Model Training: Basic Specification
 
@@ -86,10 +86,10 @@ kmeans_fit <- kmeans_spec %>%
   fit(~., data = penguins_train_baked)
 ```
 
-- tidymodels provides a consistent interface across different modeling packages
-- `k_means()`: Initializes a K-means clustering model
-- `set_engine()`: Specifies the package to use for fitting the model
-- `fit()`: Executes the model on the prepared data
+-   tidymodels provides a consistent interface across different modeling packages
+-   `k_means()`: Initializes a K-means clustering model
+-   `set_engine()`: Specifies the package to use for fitting the model
+-   `fit()`: Executes the model on the prepared data
 
 ## Model Training: Different Engines
 
@@ -107,9 +107,9 @@ kmeans_fit_cr <- kmeans_spec_cr %>%
   fit(~., data = penguins_train_baked)
 ```
 
-- Different engines allow for various implementations and algorithms
-- "stats": R's built-in stats package (default)
-- "ClusterR": Faster implementation, especially for larger datasets
+-   Different engines allow for various implementations and algorithms
+-   "stats": R's built-in stats package (default)
+-   "ClusterR": Faster implementation, especially for larger datasets
 
 ## Comparing Engine Results
 
@@ -127,8 +127,8 @@ comparison <- bind_cols(lloyd_preds, cr_preds)
 table(comparison$lloyd, comparison$clusterR)
 ```
 
-- Compare cluster assignments between different engines
-- Results may vary due to different algorithms and random initializations
+-   Compare cluster assignments between different engines
+-   Results may vary due to different algorithms and random initializations
 
 ## Predictions
 
@@ -136,8 +136,8 @@ table(comparison$lloyd, comparison$clusterR)
 penguins_clust <- augment(kmeans_fit, penguins_test_baked)
 ```
 
-- `augment()`: Adds predictions to the original dataset
-- Returns a tibble with the original data and a new `.pred_cluster` column
+-   `augment()`: Adds predictions to the original dataset
+-   Returns a tibble with the original data and a new `.pred_cluster` column
 
 ## Model Validation
 
@@ -155,10 +155,10 @@ kmeans_metrics <- penguins_clust %>%
 print(kmeans_metrics)
 ```
 
-- species_mode tells us the most common species
-- 
-- Evaluate clustering performance using metrics like cluster size and purity
-- Examine the relationship between clusters and known categories (e.g., species)
+-   species_mode tells us the most common species
+-   purity measures how many of the observations belong to the assigned cluster
+-   Evaluate clustering performance using metrics like cluster size and purity
+-   Examine the relationship between clusters and known categories (e.g., species)
 
 ## Initial Clustering Visualization
 
@@ -171,6 +171,20 @@ ggplot(penguins_clust, aes(x = bill_length_mm, y = bill_depth_mm, color = .pred_
 ## Parameter Tuning
 
 ```{r}
+penguins_cleaned <- penguins %>%
+  drop_na() %>%
+  select(bill_length_mm, bill_depth_mm, flipper_length_mm, body_mass_g)
+
+penguins_split <- initial_split(penguins_cleaned, prop = 0.7)
+penguins_train <- training(penguins_split)
+penguins_test <- testing(penguins_split)
+
+penguins_recipe <- recipe(~., data = penguins_train) %>%
+  step_naomit(all_predictors()) %>%  # Remove rows with NA values
+  step_normalize(all_numeric_predictors())
+```
+
+```{r}
 kmeans_spec_tune <- k_means(num_clusters = tune()) %>%
   set_engine("stats")
 
@@ -178,7 +192,7 @@ penguins_wf <- workflow() %>%
   add_recipe(penguins_recipe) %>%
   add_model(kmeans_spec_tune)
 
-cluster_grid <- grid_regular(num_clusters(), levels = 5)
+cluster_grid <- grid_regular(num_clusters(), levels = 3)
 
 set.seed(123)
 penguins_folds <- vfold_cv(penguins_train, v = 5)
@@ -191,10 +205,10 @@ tune_results <- tune_cluster(
 )
 ```
 
-- Use `tune()` to specify parameters for tuning
-- Create a workflow combining recipe and model
-- Define a grid of parameter values to try
-- Use cross-validation to evaluate different parameter settings
+-   Use `tune()` to specify parameters for tuning
+-   Create a workflow combining recipe and model
+-   Define a grid of parameter values to try
+-   Use cross-validation to evaluate different parameter settings
 
 ## Visualizing Tuning Results: SSE Within
 
@@ -208,21 +222,24 @@ autoplot(tune_results, metric = "sse_within_total")
 autoplot(tune_results, metric = "silhouette_avg")
 ```
 
-- `autoplot()`: Automatically creates informative plots for tuning results
-- Helps visualize the impact of different parameter values on model performance
+-   `autoplot()`: Automatically creates informative plots for tuning results
+-   Helps visualize the impact of different parameter values on model performance
 
 ## Selecting the Best Model
 
 ```{r}
 best_kmeans <- select_best(tune_results, metric = "silhouette_avg")
-final_kmeans <- finalize_model(kmeans_spec_tune, best_kmeans)
+
+final_kmeans <- k_means(num_clusters = best_kmeans$num_clusters) %>%
+  set_engine("stats")
+
 
 final_fit <- fit(final_kmeans, ~., data = penguins_train_baked)
 ```
 
-- `select_best()`: Choose the best performing model based on a specific metric
-- `finalize_model()`: Update the model specification with the best parameters
-- `fit()`: Train the final model on the entire training set
+-   `select_best()`: Choose the best performing model based on a specific metric
+-   `finalize_model()`: Update the model specification with the best parameters
+-   `fit()`: Train the final model on the entire training set
 
 ## Visualizing Final Results
 
@@ -235,8 +252,8 @@ augment(final_fit, penguins_test_baked) %>%
 
 ## Conclusion
 
-- tidymodels provides a consistent, user-friendly interface for machine learning tasks
-- Simplifies the process of data preparation, model training, and evaluation
-- Supports parameter tuning and model selection
-- Can be applied to various types of models, including clustering
-- Encourages reproducible and organized workflow in data science projects
+-   tidymodels provides a consistent, user-friendly interface for machine learning tasks
+-   Simplifies the process of data preparation, model training, and evaluation
+-   Supports parameter tuning and model selection
+-   Can be applied to various types of models, including clustering
+-   Encourages reproducible and organized workflow in data science projects

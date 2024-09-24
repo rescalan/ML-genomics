@@ -2,7 +2,6 @@
 title: "Class 3 - ML in Genomics: Clustering"
 subtitle: "An introduction to clustering methods"
 author: Renan Escalante
-date: "`r Sys.Date()`"
 output:
   xaringan::moon_reader:
     css: ["default", "assets/css/my-theme.css", "assets/css/my-fonts.css"]
@@ -171,6 +170,32 @@ ggplot(pens) +
   theme(legend.position = "none")
 ```
 ]
+
+.panel[.panel-name[Final Result]
+
+```{r kmeans-final, echo=FALSE, fig.align='center'}
+kmeans_result <- kmeans(pens, centers = pens[init, ])
+
+ggplot(pens) +
+  geom_point(
+    aes(
+      x = bill_length_mm,
+      y = bill_depth_mm,
+      color = as.factor(kmeans_result$cluster)
+    )
+  ) +
+  geom_mark_ellipse(
+    aes(
+      x = bill_length_mm,
+      y = bill_depth_mm,
+      color = as.factor(kmeans_result$cluster)
+    ),
+    expand = unit(1, "mm")
+  ) +
+  theme_minimal() +
+  theme(legend.position = "none")
+```
+]
 ]
 
 ---
@@ -313,10 +338,6 @@ hclust_fit %>%
 ]
 ]
 
----
-
-class: middle
-
 # Evaluation and Comparison
 
 - Internal validation measures:
@@ -371,6 +392,39 @@ plot_silhouette(kmeans_fit, penguins, "K-means Silhouette Plot")
 
 class: middle
 
+# Determining Optimal Number of Clusters
+
+.panelset[
+.panel[.panel-name[Code]
+
+```{r elbow-method, eval=FALSE}
+tibble(k = 1:10) %>%
+  mutate(
+    kmeans = map(k, ~k_means(num_clusters = .x) %>% 
+                   fit(~., data = penguins) %>% 
+                   sse_within_total()),
+    kmeans_sse = map_dbl(kmeans, ~.x$.estimate)
+  ) %>%
+  ggplot(aes(k, kmeans_sse)) +
+  geom_line() +
+  geom_point() +
+  labs(title = "Elbow Method for K-means",
+       x = "Number of Clusters (k)",
+       y = "Within-cluster Sum of Squares")
+```
+]
+
+.panel[.panel-name[Explanation]
+- The "elbow method" helps determine the optimal number of clusters
+- Look for the "elbow" point where the rate of decrease sharply shifts
+- This point suggests a good balance between cluster number and within-cluster variance
+]
+]
+
+---
+
+class: middle
+
 # Application in Genomics: NCI60 Dataset
 
 - 6,830 gene expression measurements
@@ -396,44 +450,3 @@ pca_result <- prcomp(nci60 %>% select(-cancer_type), scale. = TRUE)
 
 ```{r nci60-viz, eval=FALSE}
 augment(pca_result, nci60) %>%
-  ggplot(aes(.fittedPC1, .fittedPC2, color = cancer_type)) +
-  geom_point() +
-  labs(title = "PCA of NCI60 Gene Expression Data",
-       x = "PC1", y = "PC2")
-```
-]
-]
-
----
-
-class: middle
-
-# Conclusion
-
-- Clustering is a powerful tool for unsupervised learning
-- K-means and hierarchical clustering have different strengths
-- Proper evaluation and interpretation are crucial
-- Clustering has many applications in genomics and bioinformatics
-
----
-
-class: middle
-
-# References
-
-1. James, G., Witten, D., Hastie, T., & Tibshirani, R. (2013). An Introduction to Statistical Learning.
-2. Hastie, T., Tibshirani, R., & Friedman, J. (2009). The Elements of Statistical Learning.
-3. Jiang, D., Tang, C., & Zhang, A. (2004). Cluster Analysis for Gene Expression Data: A Survey.
-4. Stuart, T., & Satija, R. (2019). Integrative single-cell analysis.
-
----
-
-class: bottom, left, inverse
-
-## Thank you!
-
-### Find me at...
-[GitHub: @renancesol](https://github.com/renancesol)  
-[Twitter: @renancesol](https://twitter.com/renancesol)
-
-[Page: http://example.com/renan](http://example.com/renan)
