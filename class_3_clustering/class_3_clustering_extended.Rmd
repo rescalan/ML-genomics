@@ -147,6 +147,29 @@ specific_image <- image_files_sorted[9]
 knitr::include_graphics(specific_image)
 ```
 
+## K-means
+
+```{r, echo=FALSE, out.width="80%", fig.align="center"}
+# Choose a specific image, for example, the first one
+specific_image <- image_files_sorted[10]
+knitr::include_graphics(specific_image)
+```
+
+## K-means
+
+```{r, echo=FALSE, out.width="80%", fig.align="center"}
+# Choose a specific image, for example, the first one
+specific_image <- image_files_sorted[11]
+knitr::include_graphics(specific_image)
+```
+
+## K-means
+
+```{r, echo=FALSE, out.width="80%", fig.align="center"}
+# Choose a specific image, for example, the first one
+specific_image <- image_files_sorted[12]
+knitr::include_graphics(specific_image)
+```
 ## Step 1: Choose Initial Centroids
 
 ```{r kmeans-step1, echo=FALSE}
@@ -267,6 +290,17 @@ augment(kmeans_fit, new_data = penguins) %>%
   - Complete
   - Average
   - Ward's
+  
+
+## Linkage methods
+
+```{r, echo=FALSE, out.width="40%", fig.align="center"}
+# Choose a specific image, for example, the first one
+specific_image <- image_files_sorted[15]
+knitr::include_graphics(specific_image)
+```
+
+  
 
 ## Hierarchical Clustering: Step-by-Step
 
@@ -387,6 +421,49 @@ tibble(
   knitr::kable()
 ```
 
+## Silhouette
+
+```{r, echo=FALSE, out.width="60%", fig.align="center"}
+# Choose a specific image, for example, the first one
+specific_image <- image_files_sorted[13]
+knitr::include_graphics(specific_image)
+```
+
+## Silhouette
+
+```{r, echo=FALSE, out.width="40%", fig.align="top"}
+# Choose a specific image, for example, the first one
+specific_image <- image_files_sorted[14]
+knitr::include_graphics(specific_image)
+```
+
+## Calculation of TSS and WSS (SSE)
+
+- WSS (Within-cluster Sum of Squares) or SSE : Measures the compactness of clusters. It's the sum of squared distances between each point and the centroid of its assigned cluster.
+
+- TSS (Total Sum of Squares): Measures the total variance in the dataset. It's the sum of squared distances between each point and the overall mean of the data.
+
+- A lower WSS indicates more compact, tightly-knit clusters.
+
+- The ratio WSS/TSS represents the proportion of variance explained by the clustering.
+
+- TSS = WSS + BSS Where BSS is the Between-cluster Sum of Squares, which measures the separation between clusters.
+
+- As the number of clusters increases, WSS tends to decrease while BSS increases.
+
+- The elbow method plots WSS against the number of clusters. The "elbow" point where the rate of decrease sharply changes is often chosen as the optimal number of clusters.
+
+- Minimizing WSS/TSS ratio (or maximizing BSS/TSS ratio) is a common objective in clustering algorithms
+
+
+## TSS/ WSS calculation
+
+```{r, echo=FALSE, out.width="60%", fig.align="center"}
+# Choose a specific image, for example, the first one
+specific_image <- image_files_sorted[16]
+knitr::include_graphics(specific_image)
+```
+
 ## Determining Optimal Number of Clusters
 
 ```{r elbow-method, eval=FALSE}
@@ -498,6 +575,7 @@ plot_silhouette <- function(fit, data, title) {
 
 plot_silhouette(kmeans_fit, penguins_scaled, "K-means Silhouette Plot")
 ```
+
 
 ## Metrics for Clustering
 
