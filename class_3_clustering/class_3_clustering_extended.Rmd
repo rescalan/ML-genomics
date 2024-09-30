@@ -6,6 +6,7 @@ output:
   ioslides_presentation:
     widescreen: true
     smaller: true
+  css: custom.css
 ---
 
 ```{r setup, include=FALSE}
@@ -170,6 +171,7 @@ knitr::include_graphics(specific_image)
 specific_image <- image_files_sorted[12]
 knitr::include_graphics(specific_image)
 ```
+
 ## Step 1: Choose Initial Centroids
 
 ```{r kmeans-step1, echo=FALSE}
@@ -284,12 +286,14 @@ augment(kmeans_fit, new_data = penguins) %>%
 - Builds a tree-like structure (dendrogram)
 - Two main types:
   - Agglomerative (bottom-up)
+    A bottom-up approach that starts with individual data points as clusters and iteratively merges them.
   - Divisive (top-down)
+    A top-down approach that starts with all data points in one cluster and recursively splits them.
 - Linkage methods:
-  - Single
-  - Complete
-  - Average
-  - Ward's
+  - Single: Defines inter-cluster distance as the shortest distance between any two points in different clusters.
+  - Complete: Defines inter-cluster distance as the maximum distance between any two points in different clusters.
+  - Average: Defines inter-cluster distance as the average distance between all pairs of points in different clusters.
+  - Ward's: Minimizes the total within-cluster variance when merging clusters.
   
 
 ## Linkage methods
@@ -429,13 +433,16 @@ specific_image <- image_files_sorted[13]
 knitr::include_graphics(specific_image)
 ```
 
+
 ## Silhouette
 
-```{r, echo=FALSE, out.width="40%", fig.align="top"}
+<div class="top-right-image">
+```{r, echo=FALSE, out.width="30%", fig.align="center"}
 # Choose a specific image, for example, the first one
 specific_image <- image_files_sorted[14]
 knitr::include_graphics(specific_image)
 ```
+</div>
 
 ## Calculation of TSS and WSS (SSE)
 

@@ -1,0 +1,261 @@
+---
+title: "Class 3 - ML in Genomics: Clustering (Extended)"
+author: "Renan Escalante"
+date: "`r Sys.Date()`"
+output:
+  ioslides_presentation:
+    widescreen: true
+    smaller: true
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE)
+library(tidyverse)
+library(tidymodels)
+library(tidyclust)
+library(palmerpenguins)
+library(factoextra)
+library(ggforce)
+```
+
+## Overview
+
+1. Introduction to Clustering
+2. K-means Clustering
+3. Hierarchical Clustering
+4. Evaluation and Comparison of Clustering Methods
+5. Tuning Cluster Models
+6. Introduction to NCI60 Dataset
+
+## Introduction to Clustering
+
+- Unsupervised learning technique
+- Groups similar data points together
+- No predefined labels or categories
+- Used for:
+  - Pattern discovery
+  - Data compression
+  - Preprocessing for other algorithms
+
+## Data Preparation: Palmer Penguins
+
+```{r}
+penguins_cleaned <- penguins %>%
+  drop_na() %>%
+  select(bill_length_mm, bill_depth_mm, flipper_length_mm, body_mass_g)
+
+penguins_recipe <- recipe(~., data = penguins_cleaned) %>%
+  step_normalize(all_predictors())
+
+penguins_prep <- prep(penguins_recipe)
+penguins_scaled <- juice(penguins_prep)
+```
+
+## K-means Clustering
+
+- Partitioning method
+- Aims to minimize within-cluster variation
+- Algorithm:
+  1. Choose K centroids
+  2. Assign points to nearest centroid
+  3. Recalculate centroids
+  4. Repeat until convergence
+
+## K-means Clustering with tidyclust
+
+```{r}
+set.seed(123)
+kmeans_spec <- k_means(num_clusters = 3) %>%
+  set_engine("stats")
+
+kmeans_fit <- kmeans_spec %>%
+  fit(~., data = penguins_scaled)
+
+kmeans_clusters <- kmeans_fit %>%
+  extract_cluster_assignment()
+
+kmeans_centroids <- kmeans_fit %>%
+  extract_centroids()
+```
+
+## Visualizing K-means Results
+
+```{r, echo=FALSE}
+ggplot(penguins_scaled, aes(x = bill_length_mm, y = bill_depth_mm, color = kmeans_clusters$.cluster)) +
+  geom_point() +
+  geom_point(data = kmeans_centroids, aes(x = bill_length_mm, y = bill_depth_mm), color = "black", size = 5, shape = 8) +
+  labs(title = "K-means Clustering", color = "Cluster")
+```
+
+## Hierarchical Clustering
+
+- Builds a tree-like structure (dendrogram)
+- Two main types:
+  - Agglomerative (bottom-up)
+  - Divisive (top-down)
+- Linkage methods:
+  - Single
+  - Complete
+  - Average
+  - Ward's
+
+## Hierarchical Clustering with tidyclust
+
+```{r}
+set.seed(123)
+hclust_spec <- hier_clust(num_clusters = 3, linkage_method = "average") %>%
+  set_engine("stats")
+
+hclust_fit <- hclust_spec %>%
+  fit(~., data = penguins_scaled)
+
+hclust_clusters <- hclust_fit %>%
+  extract_cluster_assignment()
+
+hclust_centroids <- hclust_fit %>%
+  extract_centroids()
+```
+
+## Visualizing Hierarchical Clustering Dendrogram
+
+```{r, echo=FALSE}
+hclust_fit %>%
+  extract_fit_engine() %>%
+  fviz_dend(k = 3, main = "Hierarchical Clustering Dendrogram")
+```
+
+## Visualizing Hierarchical Clustering Results
+
+```{r, echo=FALSE}
+ggplot(penguins_scaled, aes(x = bill_length_mm, y = bill_depth_mm, color = hclust_clusters$.cluster)) +
+  geom_point() +
+  geom_point(data = hclust_centroids, aes(x = bill_length_mm, y = bill_depth_mm), color = "black", size = 5, shape = 8) +
+  labs(title = "Hierarchical Clustering", color = "Cluster")
+```
+
+## Evaluation and Comparison of Clustering Methods
+
+- Internal validation measures:
+  - Silhouette score
+  - Calinski-Harabasz index
+  - Davies-Bouldin index
+- External validation (if true labels are known):
+  - Rand index
+  - Adjusted Rand index
+- Visual inspection and domain expertise
+
+## Comparing K-means and Hierarchical Clustering
+
+```{r}
+# Confusion matrix
+table(kmeans = kmeans_clusters$.cluster, hclust = hclust_clusters$.cluster)
+
+# Silhouette scores
+kmeans_silhouette <- kmeans_fit %>%
+  silhouette_avg(penguins_scaled)
+
+hclust_silhouette <- hclust_fit %>%
+  silhouette_avg(penguins_scaled)
+
+cat("K-means Silhouette Score:", kmeans_silhouette$.estimate, "\n")
+cat("Hierarchical Clustering Silhouette Score:", hclust_silhouette$.estimate, "\n")
+```
+
+## K-means Silhouette Plot
+
+```{r, echo=FALSE}
+plot_silhouette <- function(fit, data, title) {
+  clusters <- fit %>% extract_cluster_assignment()
+  sil <- cluster::silhouette(as.numeric(clusters$.cluster), dist(data))
+  fviz_silhouette(sil) +
+    labs(title = title)
+}
+
+plot_silhouette(kmeans_fit, penguins_scaled, "K-means Silhouette Plot")
+```
+
+## Hierarchical Clustering Silhouette Plot
+
+```{r, echo=FALSE}
+plot_silhouette(hclust_fit, penguins_scaled, "Hierarchical Clustering Silhouette Plot")
+```
+
+## Tuning Cluster Models
+
+- In unsupervised settings, there's no objective measure of success
+- We can still vary inputs and quantify results
+- Goal: Select appropriate number of clusters based on metrics
+
+## Elbow Method for K-means
+
+```{r}
+calculate_wcss <- function(k) {
+  kmeans_spec <- k_means(num_clusters = k) %>% set_engine("stats")
+  kmeans_fit <- kmeans_spec %>% fit(~., data = penguins_scaled)
+  wcss <- kmeans_fit %>% sse_within_total()
+  return(wcss$.estimate)
+}
+
+k_values <- 1:10
+wcss_values <- map_dbl(k_values, calculate_wcss)
+```
+
+## Elbow Method Plot
+
+```{r, echo=FALSE}
+ggplot(tibble(k = k_values, wcss = wcss_values), aes(x = k, y = wcss)) +
+  geom_line() +
+  geom_point() +
+  labs(title = "Elbow Method for K-means", x = "Number of Clusters (k)", y = "Within-cluster Sum of Squares")
+```
+
+## Tuning with tune_cluster()
+
+```{r}
+set.seed(123)
+penguins_folds <- vfold_cv(penguins_scaled, v = 5)
+
+hclust_spec <- hier_clust(num_clusters = tune(), linkage_method = "average") %>%
+  set_engine("stats")
+
+hclust_grid <- grid_regular(num_clusters(), levels = 9)
+
+hclust_tune <- tune_cluster(
+  hclust_spec,
+  ~.,
+  resamples = penguins_folds,
+  grid = hclust_grid,
+  metrics = cluster_metric_set(sse_within_total, silhouette_avg)
+)
+```
+
+## Tuning Results Plot
+
+```{r, echo=FALSE}
+autoplot(hclust_tune)
+```
+
+## Introduction to NCI60 Dataset
+
+- NCI60: A genomic dataset used in cancer research
+- Contains 6,830 gene expression measurements
+- Data from 64 different cancer cell lines
+- Represents 9 different types of cancer
+- Used for studying gene expression patterns in various cancer types
+- Valuable resource for developing and testing clustering algorithms in a high-dimensional biological context
+
+## Conclusion
+
+- Clustering is a powerful tool for unsupervised learning
+- K-means and hierarchical clustering have different strengths
+- Proper evaluation and interpretation are crucial
+- Clustering has many applications in genomics and bioinformatics
+- Tuning the number of clusters is important for optimal results
+- High-dimensional data (like gene expression) presents unique challenges and opportunities for clustering analysis
+
+## References
+
+1. James, G., Witten, D., Hastie, T., & Tibshirani, R. (2013). An Introduction to Statistical Learning.
+2. Hastie, T., Tibshirani, R., & Friedman, J. (2009). The Elements of Statistical Learning.
+3. Jiang, D., Tang, C., & Zhang, A. (2004). Cluster Analysis for Gene Expression Data: A Survey.
+4. Stuart, T., & Satija, R. (2019). Integrative single-cell analysis.
