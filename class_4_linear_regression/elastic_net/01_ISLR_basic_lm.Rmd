@@ -1,0 +1,223 @@
+---
+title: "Class 4 - ML in genomics: Linear Regression"
+author: "Renan Escalante"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Introduction
+
+This lab will go over how to perform linear regression. This will include simple linear regression and multiple linear regression in addition to how you can apply transformations to the predictors. This chapter will use parsnip for model fitting and recipes and workflows to perform the transformations.
+
+## Libraries
+
+We load tidymodels and ISLR and MASS for data sets.
+
+```{r libraries, message=FALSE, warning=FALSE}
+library(MASS) # For Boston data set
+library(tidymodels)
+library(ISLR)
+```
+
+## Simple linear regression
+
+We will build a simple linear regression model that relates the median value of owner-occupied homes (`medv`) as the response with a variable indicating the percentage of the population that belongs to a lower status (`lstat`) as the predictor.
+
+```{r model_spec}
+lm_spec <- linear_reg() %>%
+  set_mode("regression") %>%
+  set_engine("lm")
+
+lm_spec
+```
+
+Now we fit the model:
+
+```{r fit_model}
+lm_fit <- lm_spec %>%
+  fit(medv ~ lstat, data = Boston)
+
+lm_fit
+```
+
+We can access the underlying fit object:
+
+```{r access_fit}
+lm_fit %>%
+  pluck("fit")
+```
+
+Let's look at the summary:
+
+```{r model_summary}
+lm_fit %>%
+  pluck("fit") %>%
+  summary()
+```
+
+We can use functions from the broom package to extract key information:
+
+```{r tidy_output}
+tidy(lm_fit)
+```
+
+And glance() for model statistics:
+
+```{r glance_output}
+glance(lm_fit)
+```
+
+For predictions, we need to explicitly supply the data set:
+
+```{r predictions}
+predict(lm_fit, new_data = Boston)
+```
+
+We can also return confidence intervals:
+
+```{r conf_intervals}
+predict(lm_fit, new_data = Boston, type = "conf_int")
+```
+
+To compare observed and predicted values:
+
+```{r compare_values}
+bind_cols(
+  predict(lm_fit, new_data = Boston),
+  Boston
+) %>%
+  dplyr::select(medv, .pred)
+```
+
+Or use augment():
+
+```{r augment}
+augment(lm_fit, new_data = Boston) %>%
+  dplyr::select(medv, .pred)
+```
+
+## Multiple linear regression
+
+We can fit a multiple linear regression model by adding more predictors:
+
+```{r multiple_regression}
+lm_fit2 <- lm_spec %>%
+  fit(medv ~ lstat + age, data = Boston)
+
+lm_fit2
+```
+
+Extract parameter estimates:
+
+```{r multiple_tidy}
+tidy(lm_fit2)
+```
+
+Make predictions:
+
+```{r multiple_predict}
+predict(lm_fit2, new_data = Boston)
+```
+
+We can use the formula `y ~ .` to include all variables as predictors:
+
+```{r all_predictors}
+lm_fit3 <- lm_spec %>%
+  fit(medv ~ ., data = Boston)
+
+lm_fit3
+```
+
+## Interaction terms
+
+We can include interaction terms in our model:
+
+```{r interaction}
+lm_fit4 <- lm_spec %>%
+  fit(medv ~ lstat * age, data = Boston)
+
+lm_fit4
+```
+
+Alternatively, we can use recipes to specify interactions:
+
+```{r recipe_interaction}
+rec_spec_interact <- recipe(medv ~ lstat + age, data = Boston) %>%
+  step_interact(~ lstat:age)
+
+lm_wf_interact <- workflow() %>%
+  add_model(lm_spec) %>%
+  add_recipe(rec_spec_interact)
+
+lm_wf_interact %>% fit(Boston)
+```
+
+## Non-linear transformations of the predictors
+
+We can use recipes to apply transformations to predictors:
+
+```{r recipe_transform}
+rec_spec_pow2 <- recipe(medv ~ lstat, data = Boston) %>%
+  step_mutate(lstat2 = lstat ^ 2)
+
+lm_wf_pow2 <- workflow() %>%
+  add_model(lm_spec) %>%
+  add_recipe(rec_spec_pow2)
+
+lm_wf_pow2 %>% fit(Boston)
+```
+
+Or use built-in transformations like logarithms:
+
+```{r recipe_log}
+rec_spec_log <- recipe(medv ~ lstat, data = Boston) %>%
+  step_log(lstat)
+
+lm_wf_log <- workflow() %>%
+  add_model(lm_spec) %>%
+  add_recipe(rec_spec_log)
+
+lm_wf_log %>% fit(Boston)
+```
+
+## Qualitative predictors
+
+We'll now use the Carseats data set, which includes qualitative predictors:
+
+```{r qualitative_predictors}
+Carseats %>%
+  pull(ShelveLoc) %>%
+  contrasts()
+```
+
+We can include qualitative predictors in our model:
+
+```{r qualitative_model}
+lm_spec %>%
+  fit(Sales ~ . + Income:Advertising + Price:Age, data = Carseats)
+```
+
+We can also use recipes to handle qualitative variables:
+
+```{r recipe_qualitative}
+rec_spec <- recipe(Sales ~ ., data = Carseats) %>%
+  step_dummy(all_nominal_predictors()) %>%
+  step_interact(~ Income:Advertising + Price:Age)
+
+lm_wf <- workflow() %>%
+  add_model(lm_spec) %>%
+  add_recipe(rec_spec)
+
+lm_wf %>% fit(Carseats)
+```
+
+This concludes our exploration of linear regression using tidymodels. We've covered simple and multiple linear regression, interaction terms, non-linear transformations, and handling qualitative predictors.
+
+```{r}
+
+```
+
