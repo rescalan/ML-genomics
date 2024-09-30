@@ -1,7 +1,8 @@
 ---
-title: "01 ISLR elastic net"
+title: "Class 4 - ML in genomics: Linear Model Selection and Regularization"
+author: "Renan Escalante"
+date: "`r Sys.Date()`"
 output: html_document
-date: "2024-09-30"
 ---
 
 ```{r setup, include=FALSE}
@@ -10,13 +11,13 @@ library(tidymodels)
 library(tidyverse)
 ```
 
-# Linear Model Selection and Regularization
+## Introduction
 
 This document demonstrates linear model selection and regularization techniques using the tidymodels framework in R. We'll be working with the Hitters dataset from the ISLR package.
 
 First, let's load the necessary libraries and prepare our data:
 
-```r
+```{r load_libraries_data}
 library(tidymodels)
 library(ISLR)
 
@@ -30,7 +31,7 @@ We load the tidymodels and ISLR libraries. Then we convert the Hitters dataset t
 
 Let's start with ridge regression. We'll create a model specification for ridge regression:
 
-```r
+```{r ridge_spec}
 ridge_spec <- linear_reg(mixture = 0, penalty = 0) %>%
   set_mode("regression") %>%
   set_engine("glmnet")
@@ -40,7 +41,7 @@ Here, we set `mixture = 0` for ridge regression and initially set `penalty = 0`.
 
 Now, let's fit the model:
 
-```r
+```{r ridge_fit}
 ridge_fit <- fit(ridge_spec, Salary ~ ., data = Hitters)
 ```
 
@@ -48,7 +49,7 @@ This fits the ridge regression model using all variables to predict Salary.
 
 We can examine the model coefficients:
 
-```r
+```{r ridge_tidy}
 tidy(ridge_fit)
 ```
 
@@ -56,7 +57,7 @@ The `tidy()` function gives us a tidy tibble of the model coefficients.
 
 Let's see how the coefficients change with different penalty values:
 
-```r
+```{r ridge_penalties}
 tidy(ridge_fit, penalty = 11498)
 tidy(ridge_fit, penalty = 705)
 tidy(ridge_fit, penalty = 50)
@@ -66,7 +67,7 @@ As the penalty increases, the coefficients shrink towards zero.
 
 We can visualize how coefficients change with penalty:
 
-```r
+```{r ridge_plot}
 ridge_fit %>%
   autoplot()
 ```
@@ -77,7 +78,7 @@ This plot shows how each coefficient changes as the penalty (lambda) increases.
 
 To find the optimal penalty, we'll use cross-validation. First, let's split our data:
 
-```r
+```{r data_split}
 Hitters_split <- initial_split(Hitters, strata = "Salary")
 Hitters_train <- training(Hitters_split)
 Hitters_test <- testing(Hitters_split)
@@ -88,7 +89,7 @@ We create training and testing sets, and set up 10-fold cross-validation.
 
 Now, let's create a recipe for preprocessing:
 
-```r
+```{r ridge_recipe}
 ridge_recipe <-
   recipe(formula = Salary ~ ., data = Hitters_train) %>%
   step_novel(all_nominal_predictors()) %>%
@@ -101,7 +102,7 @@ This recipe handles nominal predictors, removes zero-variance predictors, and no
 
 Let's update our model specification to tune the penalty:
 
-```r
+```{r ridge_spec_tune}
 ridge_spec <-
   linear_reg(penalty = tune(), mixture = 0) %>%
   set_mode("regression") %>%
@@ -110,7 +111,7 @@ ridge_spec <-
 
 Now we create a workflow combining the recipe and model:
 
-```r
+```{r ridge_workflow}
 ridge_workflow <- workflow() %>%
   add_recipe(ridge_recipe) %>%
   add_model(ridge_spec)
@@ -118,13 +119,13 @@ ridge_workflow <- workflow() %>%
 
 We'll create a grid of penalty values to try:
 
-```r
+```{r penalty_grid}
 penalty_grid <- grid_regular(penalty(range = c(-5, 5)), levels = 50)
 ```
 
 Now we can tune the model:
 
-```r
+```{r tune_ridge}
 tune_res <- tune_grid(
   ridge_workflow,
   resamples = Hitters_fold,
@@ -134,7 +135,7 @@ tune_res <- tune_grid(
 
 Let's visualize the results:
 
-```r
+```{r plot_tune_results}
 autoplot(tune_res)
 ```
 
@@ -142,20 +143,20 @@ This plot shows how different metrics change with the penalty value.
 
 We can select the best penalty value:
 
-```r
+```{r select_best_penalty}
 best_penalty <- select_best(tune_res, metric = "rsq")
 ```
 
 Now let's finalize our workflow with the best penalty and fit it to the training data:
 
-```r
+```{r final_ridge_fit}
 ridge_final <- finalize_workflow(ridge_workflow, best_penalty)
 ridge_final_fit <- fit(ridge_final, data = Hitters_train)
 ```
 
 Finally, we can evaluate the model on the test set:
 
-```r
+```{r evaluate_ridge}
 augment(ridge_final_fit, new_data = Hitters_test) %>%
   rsq(truth = Salary, estimate = .pred)
 ```
@@ -166,7 +167,7 @@ This gives us the R-squared value for our final ridge regression model on the te
 
 The process for Lasso regression is very similar to Ridge regression. The main difference is setting `mixture = 1` in the model specification:
 
-```r
+```{r lasso_spec}
 lasso_spec <-
   linear_reg(penalty = tune(), mixture = 1) %>%
   set_mode("regression") %>%
@@ -179,7 +180,7 @@ We can then follow the same workflow as we did for ridge regression, including c
 
 For PCR, we use a linear regression model but include PCA in our preprocessing recipe:
 
-```r
+```{r pcr_recipe}
 pca_recipe <-
   recipe(formula = Salary ~ ., data = Hitters_train) %>%
   step_novel(all_nominal_predictors()) %>%
@@ -195,7 +196,7 @@ We tune the `threshold` parameter in `step_pca()` to determine how many principa
 
 PLS is similar to PCR, but we use `step_pls()` instead of `step_pca()`:
 
-```r
+```{r pls_recipe}
 pls_recipe <-
   recipe(formula = Salary ~ ., data = Hitters_train) %>%
   step_novel(all_nominal_predictors()) %>%
@@ -205,6 +206,28 @@ pls_recipe <-
   step_pls(all_predictors(), num_comp = tune(), outcome = "Salary")
 ```
 
+
+```{r}
+lm_spec <- linear_reg() %>%
+set_mode("regression") %>%
+set_engine("lm")
+pls_workflow <- workflow() %>%
+add_recipe(pls_recipe) %>%
+add_model(lm_spec)
+num_comp_grid <- grid_regular(num_comp(c(1, 20)), levels = 10)
+tune_res <- tune_grid(
+pls_workflow,
+resamples = Hitters_fold,
+grid = num_comp_grid
+)
+best_threshold <- select_best(tune_res, metric = "rmse")
+pls_final <- finalize_workflow(pls_workflow, best_threshold)
+```
+
+```{r}
+pls_final_fit <- fit(pls_final, data = Hitters_train)
+```
+
 We tune the `num_comp` parameter to determine how many PLS components to use.
 
 The rest of the process (creating a workflow, tuning, and evaluating) follows the same pattern as the previous methods.
@@ -212,3 +235,6 @@ The rest of the process (creating a workflow, tuning, and evaluating) follows th
 ## Conclusion
 
 This document has demonstrated how to implement and tune various linear model selection and regularization techniques using the tidymodels framework in R. These techniques include Ridge Regression, Lasso Regression, Principal Components Regression, and Partial Least Squares. Each method offers different approaches to handling multicollinearity and feature selection in linear models.
+
+
+
