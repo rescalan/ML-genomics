@@ -7,6 +7,8 @@ output: html_document
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(tidymodels)
 ```
 
 ## Introduction
@@ -18,9 +20,6 @@ In this homework, we'll use gene expression data to predict dependency scores fo
 First, let's load the necessary libraries and data.
 
 ```{r load_libraries, message=FALSE, warning=FALSE}
-library(tidyverse)
-library(tidymodels)
-
 # Load the local dataset
 data <- read_csv(here::here("class_4_linear_regression/depmap/dependency_score_to_predict.csv"))
 
@@ -134,7 +133,7 @@ ggplot(predictions, aes(x = dependency, y = .pred)) +
 
 Let's calculate feature importance using permutation importance.
 
-```{r feature_importance}
+```{r feature_importance-1}
 library(vip)
 
 # Calculate variable importance
@@ -146,114 +145,71 @@ importance <- fit %>%
 importance
 ```
 
-```{r feature_importance}
-library(vip)
 
-# Define a custom prediction wrapper function
-pred_wrapper <- function(object, new_data) {
-  predict(object, new_data = new_data)$.pred
-}
-
-# Calculate variable importance
-importance <- fit %>%
-  extract_fit_parsnip() %>%
-  vi(method = "permute", 
-     target = "dependency", 
-     metric = "rmse", 
-     pred_wrapper = pred_wrapper, 
-     train = train_data %>% select(-cell_line, -dependency),
-     target_col = "dependency",
-     nsim = 5)  # Reduced for faster computation, increase for more stable results
-
-# Convert to a tibble and arrange by importance
-importance_df <- importance %>%
-  as_tibble() %>%
-  arrange(desc(Importance))
-
-# Print top 10 important features
-print(head(importance_df, 10))
-
-# Plot importance
-importance_df %>%
-  slice_max(Importance, n = 20) %>%  # Top 20 for readability
-  ggplot(aes(x = reorder(Variable, Importance), y = Importance)) +
-  geom_col() +
-  coord_flip() +
-  labs(title = "Feature Importance for Predicting Dependency Scores",
-       x = "Gene") +
-  theme_minimal()
-
-# Update the gene_info data frame creation
-gene_info <- importance_df %>%
-  left_join(coefficients, by = c("Variable" = "term")) %>%
-  filter(Variable != "(Intercept)") %>%
-  arrange(desc(Importance))
-
-print(head(gene_info, 10))
-
-cat("\nBased on this analysis, the gene", gene_info$Variable[1], "appears to be the strongest predictor of the dependency scores.\n")
-cat("This suggests that the unknown dependency gene might be", gene_info$Variable[1], "or a gene closely related to it in function or pathway.\n")
-```
-## 6. Identifying the Likely Dependency Gene
-
-Based on the feature importance and coefficient analysis, we can make an educated guess about the likely dependency gene.
 
 ## 7. Regularized Linear Regression Models
 
 In this section, we'll use regularized linear regression models (ridge, lasso, and elastic net) to predict the dependency scores and identify the most important predictors. We'll use tidymodels for model specification, tuning, and evaluation.
 
 ```{r regularized_regression, message=FALSE, warning=FALSE}
-# library(glmnet)
-# 
-# # Create a recipe for preprocessing
-# reg_recipe <- recipe(dependency ~ ., data = train_data) %>%
-#   update_role(cell_line, new_role = "ID") %>%
-#   step_normalize(all_predictors())
-# 
-# # Set up the tuning grid
-# tune_spec <- linear_reg(penalty = tune(), mixture = tune()) %>%
-#   set_engine("glmnet")
-# 
-# # Create the workflow
-# tune_wf <- workflow() %>%
-#   add_recipe(reg_recipe) %>%
-#   add_model(tune_spec)
-# 
-# # Set up the grid of tuning parameters
-# tune_grid_df <- grid_regular(
-#   penalty(range = c(-5, 5), trans = log10_trans()),
-#   mixture(range = c(0, 1)),
-#   levels = c(penalty = 4, mixture = 3)
-# )
-# 
-# # Set up cross-validation
-# set.seed(123)
-# cv_folds <- vfold_cv(train_data, v = 5)
-# 
-# # Perform tuning
-# tune_results <- tune_grid(
-#   tune_wf,
-#   resamples = cv_folds,
-#   grid = tune_grid_df,
-#   metrics = metric_set(rmse, rsq)
-# )
+library(glmnet)
+
+# Create a recipe for preprocessing
+reg_recipe <- recipe(dependency ~ ., data = train_data) %>%
+  update_role(cell_line, new_role = "ID") %>%
+  step_zv(all_predictors()) %>%  # Remove zero-variance predictors
+  step_nzv(all_predictors()) %>%
+  step_normalize(all_predictors())
+
+# Set up the tuning grid
+tune_spec <- linear_reg(penalty = tune(), mixture = tune()) %>%
+  set_engine("glmnet")
+
+# Create the workflow
+tune_wf <- workflow() %>%
+  add_recipe(reg_recipe) %>%
+  add_model(tune_spec)
+
+# Set up the grid of tuning parameters
+tune_grid_df <- grid_regular(
+  penalty(range = c(-5, 5), trans = log10_trans()),
+  mixture(range = c(0, 1)),
+  levels = c(penalty = 4, mixture = 3)
+)
+
+# Set up cross-validation
+set.seed(123)
+cv_folds <- vfold_cv(train_data, v = 5)
+
+# Perform tuning
+tune_results <- tune_grid(
+  tune_wf,
+  resamples = cv_folds,
+  grid = tune_grid_df,
+  metrics = metric_set(rmse, rsq)
+)
 ```
 
 ```{r}
 # Display the best models
 top_models <- tune_results %>%
-  show_best("rmse", n = 5)
+  show_best(metric = "rmse", n = 5)
 print(top_models)
+```
 
+```{r}
 # Select the best model
 best_model <- tune_results %>%
-  select_best("rmse")
-print(best_model)
+  select_best(metric = "rmse")
+```
 
+```{r}
 # Finalize the workflow with the best model
 final_wf <- tune_wf %>%
   finalize_workflow(best_model)
+```
 
+```{r}
 # Fit the final model
 final_fit <- final_wf %>%
   fit(data = train_data)
@@ -277,7 +233,9 @@ final_coef %>%
   labs(title = "Top 20 Predictors from Regularized Regression",
        x = "Gene", y = "Coefficient Estimate") +
   theme_minimal()
+```
 
+```{r}
 # Make predictions on test set
 test_preds <- final_fit %>%
   predict(test_data) %>%
@@ -300,56 +258,8 @@ ggplot(test_preds, aes(x = dependency, y = .pred)) +
 top_genes_reg <- final_coef %>%
   slice_max(abs(estimate), n = 10) %>%
   pull(term)
-
-top_genes_prev <- gene_info %>%
-  slice_max(Importance, n = 10) %>%
-  pull(Variable)
-
-cat("Top 10 genes from regularized regression:\n", paste(top_genes_reg, collapse = ", "), "\n\n")
-cat("Top 10 genes from previous analysis:\n", paste(top_genes_prev, collapse = ", "), "\n\n")
-
-cat("Genes in both lists:\n", paste(intersect(top_genes_reg, top_genes_prev), collapse = ", "), "\n")
 ```
 
-
-## 7. Regularized Linear Regression Models
-
-In this section, we'll use regularized linear regression models (ridge, lasso, and elastic net) to predict the dependency scores and identify the most important predictors. We'll use tidymodels for model specification, tuning, and evaluation.
-
-```{r regularized_regression, message=FALSE, warning=FALSE}
-# Create a recipe for preprocessing
-reg_recipe <- recipe(dependency ~ ., data = train_data) %>%
-  update_role(cell_line, new_role = "ID") %>%
-  step_normalize(all_predictors())
-
-# Set up the tuning grid
-tune_spec <- linear_reg(penalty = tune(), mixture = tune()) %>%
-  set_engine("glmnet")
-
-# Create the workflow
-tune_wf <- workflow() %>%
-  add_recipe(reg_recipe) %>%
-  add_model(tune_spec)
-
-# Set up a smaller, manually defined grid
-manual_grid <- expand.grid(
-  penalty = 10^seq(-3, 0, length.out = 10),
-  mixture = c(0, 0.2, 0.4, 0.6, 0.8, 1)
-)
-
-# Set up cross-validation
-set.seed(123)
-cv_folds <- vfold_cv(train_data, v = 5)
-
-# Perform tuning with error handling
-tune_results <- tune_grid(
-  tune_wf,
-  resamples = cv_folds,
-  grid = manual_grid,
-  metrics = metric_set(rmse, rsq),
-  control = control_grid(allow_par = TRUE, verbose = TRUE)
-)
-```
 
 ```{r}
 autoplot(tune_results)

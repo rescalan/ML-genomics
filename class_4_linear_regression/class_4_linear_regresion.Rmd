@@ -106,20 +106,6 @@ newdata <- mtcars %>%
 augment(mod, newdata = newdata)
 ```
 
-## Visualizing Predictions with Confidence Intervals
-
-```{r visualize-predictions, fig.width=6, fig.height=3.5}
-# Simpler bivariate model for 2D plotting
-mod2 <- lm(mpg ~ wt, data = mtcars)
-
-au <- augment(mod2, newdata = newdata, interval = "prediction")
-
-ggplot(au, aes(wt, mpg)) +
-  geom_point() +
-  geom_line(aes(y = .fitted)) +
-  geom_ribbon(aes(ymin = .lower, ymax = .upper), col = NA, alpha = 0.3) +
-  labs(title = "Predictions with Confidence Intervals")
-```
 
 ## Residual Analysis
 
