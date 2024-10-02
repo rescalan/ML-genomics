@@ -1,0 +1,61 @@
+---
+title: "Class 4 - ML in genomics: Regularized Linear Regression"
+author: "Renan Escalante"
+date: "`r Sys.Date()`"
+output: ioslides_presentation
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+library(tidyverse)
+library(tidymodels)
+```
+
+## Regularized Linear Regression and Penalty
+
+In tidymodels, we can tune the penalty using:
+
+```{r, echo=TRUE, eval=FALSE}
+tune_spec <- linear_reg(penalty = tune(), mixture = tune()) %>%
+  set_engine("glmnet")
+```
+
+## Intuition Behind Penalty
+
+- Think of penalty as a "budget constraint" on model coefficients
+- Higher penalty: shrinks coefficients toward zero, simpler model
+- Lower penalty: allows larger coefficients, potentially overfitting
+- Helps control model complexity and prevent overfitting
+
+## Types of Penalties
+
+The `mixture` parameter determines the type of penalty:
+
+- `mixture = 0`: Ridge regression (L2 penalty)
+- `mixture = 1`: Lasso regression (L1 penalty)
+- `0 < mixture < 1`: Elastic net (combination of L1 and L2)
+
+## L2 Penalty (Ridge Regression)
+
+- Shrinks all coefficients toward zero, but rarely sets them exactly to zero
+- Good for handling multicollinearity
+- Keeps all features in the model
+
+## L1 Penalty (Lasso Regression)
+
+- Can shrink coefficients exactly to zero, performing feature selection
+- Good when you suspect many features are irrelevant
+- Produces sparse models
+
+## When to Use Each Type
+
+- Use Ridge when you want to keep all features and handle multicollinearity
+- Use Lasso when you want automatic feature selection
+- Use Elastic Net as a compromise between Ridge and Lasso
+
+## Tuning in tidymodels
+
+- tidymodels allows tuning both `penalty` and `mixture`
+- Explores a range of regularization approaches
+- Helps find the best balance between model complexity and performance
+- Optimizes for your specific dataset
