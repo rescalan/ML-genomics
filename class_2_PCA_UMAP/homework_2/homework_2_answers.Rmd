@@ -242,7 +242,7 @@ cocktails_umap_prep <- prep(cocktails_umap_rec)
 3. Create UMAP scatter plot for cocktails:
 
 ```{r}
-cocktails_umap_results <- juice(cocktails_umap_prep)
+cocktails_umap_results <- bake(cocktails_umap_prep, new_data = NULL)
 
 ggplot(cocktails_umap_results, aes(UMAP1, UMAP2, color = category)) +
   geom_point(alpha = 0.7) +

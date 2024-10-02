@@ -71,7 +71,7 @@ print(top_correlated_genes)
 
 ## 3. Model Building
 
-Now, let's split the data, create a recipe, and fit a linear regression model.
+Now, let's split the data, create a recipe, and fit    a linear regression model.
 
 ```{r model_building}
 # Split data
@@ -146,10 +146,314 @@ importance <- fit %>%
 importance
 ```
 
+```{r feature_importance}
+library(vip)
+
+# Define a custom prediction wrapper function
+pred_wrapper <- function(object, new_data) {
+  predict(object, new_data = new_data)$.pred
+}
+
+# Calculate variable importance
+importance <- fit %>%
+  extract_fit_parsnip() %>%
+  vi(method = "permute", 
+     target = "dependency", 
+     metric = "rmse", 
+     pred_wrapper = pred_wrapper, 
+     train = train_data %>% select(-cell_line, -dependency),
+     target_col = "dependency",
+     nsim = 5)  # Reduced for faster computation, increase for more stable results
+
+# Convert to a tibble and arrange by importance
+importance_df <- importance %>%
+  as_tibble() %>%
+  arrange(desc(Importance))
+
+# Print top 10 important features
+print(head(importance_df, 10))
+
+# Plot importance
+importance_df %>%
+  slice_max(Importance, n = 20) %>%  # Top 20 for readability
+  ggplot(aes(x = reorder(Variable, Importance), y = Importance)) +
+  geom_col() +
+  coord_flip() +
+  labs(title = "Feature Importance for Predicting Dependency Scores",
+       x = "Gene") +
+  theme_minimal()
+
+# Update the gene_info data frame creation
+gene_info <- importance_df %>%
+  left_join(coefficients, by = c("Variable" = "term")) %>%
+  filter(Variable != "(Intercept)") %>%
+  arrange(desc(Importance))
+
+print(head(gene_info, 10))
+
+cat("\nBased on this analysis, the gene", gene_info$Variable[1], "appears to be the strongest predictor of the dependency scores.\n")
+cat("This suggests that the unknown dependency gene might be", gene_info$Variable[1], "or a gene closely related to it in function or pathway.\n")
+```
 ## 6. Identifying the Likely Dependency Gene
 
 Based on the feature importance and coefficient analysis, we can make an educated guess about the likely dependency gene.
 
+## 7. Regularized Linear Regression Models
+
+In this section, we'll use regularized linear regression models (ridge, lasso, and elastic net) to predict the dependency scores and identify the most important predictors. We'll use tidymodels for model specification, tuning, and evaluation.
+
+```{r regularized_regression, message=FALSE, warning=FALSE}
+# library(glmnet)
+# 
+# # Create a recipe for preprocessing
+# reg_recipe <- recipe(dependency ~ ., data = train_data) %>%
+#   update_role(cell_line, new_role = "ID") %>%
+#   step_normalize(all_predictors())
+# 
+# # Set up the tuning grid
+# tune_spec <- linear_reg(penalty = tune(), mixture = tune()) %>%
+#   set_engine("glmnet")
+# 
+# # Create the workflow
+# tune_wf <- workflow() %>%
+#   add_recipe(reg_recipe) %>%
+#   add_model(tune_spec)
+# 
+# # Set up the grid of tuning parameters
+# tune_grid_df <- grid_regular(
+#   penalty(range = c(-5, 5), trans = log10_trans()),
+#   mixture(range = c(0, 1)),
+#   levels = c(penalty = 4, mixture = 3)
+# )
+# 
+# # Set up cross-validation
+# set.seed(123)
+# cv_folds <- vfold_cv(train_data, v = 5)
+# 
+# # Perform tuning
+# tune_results <- tune_grid(
+#   tune_wf,
+#   resamples = cv_folds,
+#   grid = tune_grid_df,
+#   metrics = metric_set(rmse, rsq)
+# )
+```
+
+```{r}
+# Display the best models
+top_models <- tune_results %>%
+  show_best("rmse", n = 5)
+print(top_models)
+
+# Select the best model
+best_model <- tune_results %>%
+  select_best("rmse")
+print(best_model)
+
+# Finalize the workflow with the best model
+final_wf <- tune_wf %>%
+  finalize_workflow(best_model)
+
+# Fit the final model
+final_fit <- final_wf %>%
+  fit(data = train_data)
+
+# Extract coefficients
+final_coef <- final_fit %>%
+  extract_fit_parsnip() %>%
+  tidy() %>%
+  filter(estimate != 0) %>%
+  arrange(desc(abs(estimate)))
+
+# Print top 20 coefficients
+print(head(final_coef, 20))
+
+# Plot top 20 coefficients
+final_coef %>%
+  slice_max(abs(estimate), n = 20) %>%
+  ggplot(aes(x = reorder(term, abs(estimate)), y = estimate)) +
+  geom_col() +
+  coord_flip() +
+  labs(title = "Top 20 Predictors from Regularized Regression",
+       x = "Gene", y = "Coefficient Estimate") +
+  theme_minimal()
+
+# Make predictions on test set
+test_preds <- final_fit %>%
+  predict(test_data) %>%
+  bind_cols(test_data)
+
+# Calculate performance metrics
+test_metrics <- test_preds %>%
+  metrics(truth = dependency, estimate = .pred)
+print(test_metrics)
+
+# Plot actual vs predicted
+ggplot(test_preds, aes(x = dependency, y = .pred)) +
+  geom_point(alpha = 0.5) +
+  geom_abline(color = "red") +
+  labs(title = "Actual vs Predicted Dependency Scores (Regularized Regression)",
+       x = "Actual", y = "Predicted") +
+  theme_minimal()
+
+# Compare top genes from regularized regression with previous analysis
+top_genes_reg <- final_coef %>%
+  slice_max(abs(estimate), n = 10) %>%
+  pull(term)
+
+top_genes_prev <- gene_info %>%
+  slice_max(Importance, n = 10) %>%
+  pull(Variable)
+
+cat("Top 10 genes from regularized regression:\n", paste(top_genes_reg, collapse = ", "), "\n\n")
+cat("Top 10 genes from previous analysis:\n", paste(top_genes_prev, collapse = ", "), "\n\n")
+
+cat("Genes in both lists:\n", paste(intersect(top_genes_reg, top_genes_prev), collapse = ", "), "\n")
+```
+
+
+## 7. Regularized Linear Regression Models
+
+In this section, we'll use regularized linear regression models (ridge, lasso, and elastic net) to predict the dependency scores and identify the most important predictors. We'll use tidymodels for model specification, tuning, and evaluation.
+
+```{r regularized_regression, message=FALSE, warning=FALSE}
+# Create a recipe for preprocessing
+reg_recipe <- recipe(dependency ~ ., data = train_data) %>%
+  update_role(cell_line, new_role = "ID") %>%
+  step_normalize(all_predictors())
+
+# Set up the tuning grid
+tune_spec <- linear_reg(penalty = tune(), mixture = tune()) %>%
+  set_engine("glmnet")
+
+# Create the workflow
+tune_wf <- workflow() %>%
+  add_recipe(reg_recipe) %>%
+  add_model(tune_spec)
+
+# Set up a smaller, manually defined grid
+manual_grid <- expand.grid(
+  penalty = 10^seq(-3, 0, length.out = 10),
+  mixture = c(0, 0.2, 0.4, 0.6, 0.8, 1)
+)
+
+# Set up cross-validation
+set.seed(123)
+cv_folds <- vfold_cv(train_data, v = 5)
+
+# Perform tuning with error handling
+tune_results <- tune_grid(
+  tune_wf,
+  resamples = cv_folds,
+  grid = manual_grid,
+  metrics = metric_set(rmse, rsq),
+  control = control_grid(allow_par = TRUE, verbose = TRUE)
+)
+```
+
+```{r}
+autoplot(tune_results)
+```
+
+
+```{r}
+# Display the best models
+top_models <- tune_results %>%
+  collect_metrics() %>%
+  filter(.metric == "rmse") %>%
+  arrange(mean)
+print(head(top_models, 5))
+
+# Select the best model
+best_model <- top_models %>% slice(1) %>% select(penalty, mixture)
+print(best_model)
+
+# Finalize the workflow with the best model
+final_wf <- tune_wf %>%
+  finalize_workflow(best_model)
+
+# Fit the final model
+final_fit <- final_wf %>%
+  fit(data = train_data)
+
+# Extract coefficients
+final_coef <- final_fit %>%
+  extract_fit_parsnip() %>%
+  tidy() %>%
+  filter(estimate != 0) %>%
+  arrange(desc(abs(estimate)))
+
+# Print top 20 coefficients
+print(head(final_coef, 20))
+```
+
+```{r}
+# Plot top 20 coefficients
+final_coef %>%
+  slice_max(abs(estimate), n = 20) %>%
+  ggplot(aes(x = reorder(term, abs(estimate)), y = estimate)) +
+  geom_col() +
+  coord_flip() +
+  labs(title = "Top 20 Predictors from Regularized Regression",
+       x = "Gene", y = "Coefficient Estimate") +
+  theme_minimal()
+```
+
+```{r}
+# Make predictions on test set
+test_preds <- final_fit %>%
+  predict(test_data) %>%
+  bind_cols(test_data)
+
+# Calculate performance metrics
+test_metrics <- test_preds %>%
+  metrics(truth = dependency, estimate = .pred)
+print(test_metrics)
+```
+```{r}
+# Plot actual vs predicted
+ggplot(test_preds, aes(x = dependency, y = .pred)) +
+  geom_point(alpha = 0.5) +
+  geom_abline(color = "red") +
+  labs(title = "Actual vs Predicted Dependency Scores (Regularized Regression)",
+       x = "Actual", y = "Predicted") +
+  theme_minimal()
+```
+
+```{r}
+# Compare top genes from regularized regression with previous analysis
+top_genes_reg <- final_coef %>%
+  slice_max(abs(estimate), n = 10) %>%
+  pull(term)
+
+top_genes_reg
+```
+
+In this updated section, we've made the following changes to address the previous error:
+
+1. We've replaced `grid_regular()` with a manually defined grid using `expand.grid()`. This gives us more control over the parameter values we're testing.
+2. We've reduced the range of the penalty parameter to avoid extreme values that might lead to constant predictions.
+3. We've added `control_grid(allow_par = TRUE, verbose = TRUE)` to the `tune_grid()` function. This allows for parallel processing (if available) and provides more verbose output, which can be helpful for debugging.
+4. We've modified how we select and display the best model, using `collect_metrics()` and then filtering and arranging the results.
+
+These changes should help avoid the previous error and provide more stable results. The rest of the analysis remains the same, allowing us to compare the important genes identified by regularized regression with those from the previous analysis.
+
+This approach should provide a more robust method for identifying important predictors and give students insight into how different modeling techniques can lead to slightly different, but often overlapping, sets of important features.
+```
+
+In this section, we've used regularized linear regression models to predict the dependency scores and identify the most important predictors. Here's a summary of what we did:
+
+1. We set up a recipe for preprocessing, including normalizing all predictors.
+2. We created a tuning specification for regularized regression, allowing both the penalty (lambda) and mixture (alpha) parameters to be tuned.
+3. We performed grid search cross-validation to find the best combination of penalty and mixture.
+4. We selected the best model based on RMSE and fitted it to the training data.
+5. We extracted and visualized the coefficients from the best model, which represent the importance of each gene in predicting the dependency scores.
+6. We made predictions on the test set and evaluated the model's performance.
+7. Finally, we compared the top genes identified by this regularized regression approach with those from our previous analysis.
+
+The regularized regression approach provides a different perspective on feature importance, potentially highlighting genes that are collectively important for prediction rather than individually correlated with the outcome. The genes that appear in both lists (regularized regression and previous analysis) are particularly strong candidates for being related to the unknown dependency gene.
+
+Based on this analysis, we can refine our hypothesis about the identity of the unknown dependency gene. The gene(s) consistently appearing at the top of both analyses are the strongest candidates for being the dependency gene itself or closely related to it in function or pathway.
 
 
 ## Conclusion

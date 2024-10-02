@@ -1,5 +1,6 @@
 ---
 title: "Class 4 - ML in genomics: Linear Regression"
+subtitle: "Predicting Dependency Scores"
 author: "Renan Escalante"
 date: "`r Sys.Date()`"
 output:
@@ -15,8 +16,21 @@ library(tidymodels)
 library(broom)
 library(ggplot2)
 library(performance)
-library(MASS)
-library(ISLR)
+library(here)
+```
+
+```{r load_data, include=FALSE}
+# Load the data
+dependency_data <- read_csv(here::here("class_4_linear_regression/depmap/dependency_score_to_predict.csv"))
+
+# Rename columns for easier use
+dependency_data <- dependency_data %>%
+  rename(
+    SOX10 = `SOX10 (6663)`,
+    MPPE1 = `MPPE1 (65258)`,
+    CTXN1 = `CTXN1 (404217)`,
+    dep_score = crispr_dep_map_public_24q2_score_chronos
+  )
 ```
 
 ## Introduction to Linear Regression
@@ -24,6 +38,8 @@ library(ISLR)
 - Fundamental statistical technique for modeling relationships
 - Predicts a continuous outcome variable based on one or more predictor variables
 - Assumes a linear relationship between predictors and outcome
+
+In this example, we'll predict dependency scores using gene expression data.
 
 ## Simple Linear Regression
 
@@ -34,15 +50,12 @@ library(ISLR)
   - ε: Error term
 
 ```{r simple-linear-regression, echo=FALSE, fig.width=6, fig.height=3.5}
-set.seed(123)
-x <- seq(1, 10, length.out = 100)
-y <- 2 + 3*x + rnorm(100, sd = 2)
-data <- tibble(x = x, y = y)
-
-ggplot(data, aes(x, y)) +
+ggplot(dependency_data, aes(x = SOX10, y = dep_score)) +
   geom_point() +
   geom_smooth(method = "lm", se = FALSE) +
-  labs(title = "Simple Linear Regression Example")
+  labs(title = "Simple Linear Regression Example",
+       x = "SOX10 Expression",
+       y = "Dependency Score")
 ```
 
 ## Multiple Linear Regression
@@ -50,34 +63,30 @@ ggplot(data, aes(x, y)) +
 - Multiple predictor variables (X1, X2, ..., Xn)
 - Equation: Y = β0 + β1X1 + β2X2 + ... + βnXn + ε
 
+In our case: Dependency Score = β0 + β1(SOX10) + β2(MPPE1) + β3(CTXN1) + ε
+
 ## Fitting a Linear Model with tidymodels
 
 ```{r fit-linear-model}
-# Using mtcars dataset
+# Create the model specification
 lm_spec <- linear_reg() %>%
   set_engine("lm") %>%
   set_mode("regression")
 
+# Fit the model
 lm_fit <- lm_spec %>%
-  fit(mpg ~ wt + qsec, data = mtcars)
+  fit(dep_score ~ SOX10 + MPPE1 + CTXN1, data = dependency_data)
 
 # View model summary
 tidy(lm_fit)
 glance(lm_fit)
 ```
 
-
-**tidy** creates a tidy data frame with all the coefficients in a model. See Estimating confidence intervals for linear model coefficients
-
-**glance** derives a overall significance of the model See Calculating R squared for least squares 1 column
-
-**augment** combines original data with additional information from the fit like residuals of a model, fitted values
-
 ## Interpreting Coefficients
 
 - Coefficients represent the change in Y for a one-unit change in X
-- Intercept (β0): Expected value of Y when all predictors are zero
-- For each predictor (βi): Change in Y for a one-unit increase in Xi, holding other predictors constant
+- Intercept (β0): Expected dependency score when all gene expressions are zero
+- For each predictor (βi): Change in dependency score for a one-unit increase in gene expression, holding other predictors constant
 
 ## Coefficient Plot
 
@@ -100,7 +109,7 @@ ggplot(d, aes(estimate, term, xmin = conf.low, xmax = conf.high, height = 0)) +
 - Higher values indicate better fit, but beware of overfitting
 
 ```{r r-squared}
-glance(lm_fit) %>% dplyr::select(r.squared, adj.r.squared)
+glance(lm_fit) %>% select(r.squared, adj.r.squared)
 ```
 
 ## Model Augmentation
@@ -108,17 +117,20 @@ glance(lm_fit) %>% dplyr::select(r.squared, adj.r.squared)
 Adding fitted values and residuals to the original data:
 
 ```{r augment-model}
-augment(lm_fit, new_data = mtcars)
+augment(lm_fit, new_data = dependency_data) %>%
+  select(dep_score, .pred, .resid) %>%
+  head(10)
 ```
 
 ## Predictions with New Data
 
 ```{r predict-new-data}
-newdata <- mtcars %>%
+new_data <- dependency_data %>%
   head(6) %>%
-  mutate(wt = wt + 1)
+  mutate(SOX10 = SOX10 + 1)
 
-augment(lm_fit, new_data = newdata)
+augment(lm_fit, new_data = new_data) %>%
+  select(SOX10, MPPE1, CTXN1, dep_score, .pred)
 ```
 
 ## Visualizing Predictions with Confidence Intervals
@@ -126,15 +138,17 @@ augment(lm_fit, new_data = newdata)
 ```{r visualize-predictions, fig.width=6, fig.height=3.5}
 # Simpler bivariate model for 2D plotting
 lm_fit2 <- lm_spec %>%
-  fit(mpg ~ wt, data = mtcars)
+  fit(dep_score ~ SOX10, data = dependency_data)
 
-au <- augment(lm_fit2, new_data = newdata, interval = "prediction")
+au <- augment(lm_fit2, new_data = dependency_data, interval = "prediction")
 
-ggplot(au, aes(wt, mpg)) +
-  geom_point() +
-  geom_line(aes(y = .pred)) +
-  # geom_ribbon(aes(ymin = .pred_lower, ymax = .pred_upper), col = NA, alpha = 0.3) +
-  labs(title = "Predictions with Confidence Intervals")
+ggplot(au, aes(SOX10, dep_score)) +
+  geom_point(alpha = 0.5) +
+  geom_line(aes(y = .pred), color = "blue") +
+  # geom_ribbon(aes(ymin = .pred_lower, ymax = .pred_upper), alpha = 0.2) +
+  labs(title = "Predictions with Confidence Intervals",
+       x = "SOX10 Expression",
+       y = "Dependency Score")
 ```
 
 ## Residual Analysis
@@ -147,43 +161,22 @@ ggplot(au, aes(wt, mpg)) +
   4. Normality
 
 ```{r residual-plot, echo=FALSE, fig.width=6, fig.height=3.5}
-au <- augment(lm_fit)
+au <- augment(lm_fit, new_data = dependency_data)
 ggplot(au, aes(x = .pred, y = .resid)) +
   geom_point() +
   geom_hline(yintercept = 0, linetype = "dashed", color = "red") +
   labs(title = "Residual Plot", x = "Predicted Values", y = "Residuals")
 ```
 
-## Diagnostic Plots: Leverage vs Standardized Residuals
-
-```{r leverage-residuals-plot, fig.width=6, fig.height=3.5}
-ggplot(au, aes(.hat, .std.resid)) +
-  geom_vline(size = 2, colour = "white", xintercept = 0) +
-  geom_hline(size = 2, colour = "white", yintercept = 0) +
-  geom_point() +
-  geom_smooth(se = FALSE) +
-  labs(title = "Leverage vs Standardized Residuals",
-       x = "Leverage", y = "Standardized Residuals")
-```
-
-## Diagnostic Plots: Cook's Distance
-
-```{r cooks-distance-plot, fig.width=6, fig.height=3.5}
-ggplot(au, aes(.hat, .cooksd)) +
-  geom_vline(xintercept = 0, colour = NA) +
-  geom_abline(slope = seq(0, 3, by = 0.5), colour = "white") +
-  geom_smooth(se = FALSE) +
-  geom_point() +
-  labs(title = "Cook's Distance Plot",
-       x = "Leverage", y = "Cook's Distance")
-```
 
 ## Model Diagnostics with {performance}
 
 The {performance} package provides tools for model evaluation:
 
 ```{r performance-checks, fig.width=8, fig.height=4}
-check_model(lm_fit$fit)
+lm_fit %>% 
+  extract_fit_engine() %>% 
+  check_model()
 ```
 
 ## Comparing Models
@@ -191,9 +184,9 @@ check_model(lm_fit$fit)
 Use {performance} to compare multiple models:
 
 ```{r compare-models}
-model1 <- lm_spec %>% fit(mpg ~ wt, data = mtcars)
-model2 <- lm_spec %>% fit(mpg ~ wt + hp, data = mtcars)
-model3 <- lm_spec %>% fit(mpg ~ wt + hp + qsec, data = mtcars)
+model1 <- lm_spec %>% fit(dep_score ~ SOX10, data = dependency_data)
+model2 <- lm_spec %>% fit(dep_score ~ SOX10 + MPPE1, data = dependency_data)
+model3 <- lm_spec %>% fit(dep_score ~ MPPE1 + CTXN1, data = dependency_data)
 
 compare_performance(model1, model2, model3)
 ```
@@ -207,33 +200,13 @@ compare_performance(model1, model2, model3)
 ```{r feature-engineering}
 # Example of interaction term
 lm_spec %>%
-  fit(mpg ~ wt * hp, data = mtcars) %>%
+  fit(dep_score ~ SOX10 * MPPE1, data = dependency_data) %>%
   tidy()
-```
-
-## Regularization Techniques
-
-- Ridge Regression (L2)
-- Lasso Regression (L1)
-- Elastic Net (combination of L1 and L2)
-
-These techniques help prevent overfitting and handle multicollinearity.
-
-## Column-wise Models
-
-Applying linear regression to matrix data:
-
-```{r column-wise-models}
-a <- matrix(rnorm(20), nrow = 10)
-b <- a + rnorm(length(a))
-result <- lm_spec %>% fit(b ~ a)
-
-tidy(result)
 ```
 
 ## Key Takeaways
 
-1. Linear regression is a powerful tool for modeling relationships
+1. Linear regression is a powerful tool for modeling relationships in genomic data
 2. Use `tidy()` and `glance()` for easy model summary extraction
 3. Visualize coefficients and their confidence intervals
 4. Use `augment()` to add model predictions to your data
@@ -248,6 +221,3 @@ tidy(result)
 2. Wickham, H., & Grolemund, G. (2016). R for Data Science.
 3. Kuhn, M., & Silge, J. (2022). Tidy Modeling with R.
 4. R Core Team (2021). R: A language and environment for statistical computing.
-
-
-
