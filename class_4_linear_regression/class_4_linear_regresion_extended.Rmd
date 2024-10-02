@@ -1,0 +1,253 @@
+---
+title: "Class 4 - ML in genomics: Linear Regression"
+author: "Renan Escalante"
+date: "`r Sys.Date()`"
+output:
+  ioslides_presentation:
+    widescreen: true
+    smaller: true
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE, fig.width = 6, fig.height = 3)
+library(tidyverse)
+library(tidymodels)
+library(broom)
+library(ggplot2)
+library(performance)
+library(MASS)
+library(ISLR)
+```
+
+## Introduction to Linear Regression
+
+- Fundamental statistical technique for modeling relationships
+- Predicts a continuous outcome variable based on one or more predictor variables
+- Assumes a linear relationship between predictors and outcome
+
+## Simple Linear Regression
+
+- One predictor variable (X) and one outcome variable (Y)
+- Equation: Y = β0 + β1X + ε
+  - β0: Y-intercept
+  - β1: Slope
+  - ε: Error term
+
+```{r simple-linear-regression, echo=FALSE, fig.width=6, fig.height=3.5}
+set.seed(123)
+x <- seq(1, 10, length.out = 100)
+y <- 2 + 3*x + rnorm(100, sd = 2)
+data <- tibble(x = x, y = y)
+
+ggplot(data, aes(x, y)) +
+  geom_point() +
+  geom_smooth(method = "lm", se = FALSE) +
+  labs(title = "Simple Linear Regression Example")
+```
+
+## Multiple Linear Regression
+
+- Multiple predictor variables (X1, X2, ..., Xn)
+- Equation: Y = β0 + β1X1 + β2X2 + ... + βnXn + ε
+
+## Fitting a Linear Model with tidymodels
+
+```{r fit-linear-model}
+# Using mtcars dataset
+lm_spec <- linear_reg() %>%
+  set_engine("lm") %>%
+  set_mode("regression")
+
+lm_fit <- lm_spec %>%
+  fit(mpg ~ wt + qsec, data = mtcars)
+
+# View model summary
+tidy(lm_fit)
+glance(lm_fit)
+```
+
+
+**tidy** creates a tidy data frame with all the coefficients in a model. See Estimating confidence intervals for linear model coefficients
+
+**glance** derives a overall significance of the model See Calculating R squared for least squares 1 column
+
+**augment** combines original data with additional information from the fit like residuals of a model, fitted values
+
+## Interpreting Coefficients
+
+- Coefficients represent the change in Y for a one-unit change in X
+- Intercept (β0): Expected value of Y when all predictors are zero
+- For each predictor (βi): Change in Y for a one-unit increase in Xi, holding other predictors constant
+
+## Coefficient Plot
+
+Visualizing coefficients and their confidence intervals:
+
+```{r coefficient-plot, fig.width=6, fig.height=3.5}
+d <- tidy(lm_fit, conf.int = TRUE)
+
+ggplot(d, aes(estimate, term, xmin = conf.low, xmax = conf.high, height = 0)) +
+  geom_point() +
+  geom_vline(xintercept = 0, lty = 4) +
+  geom_errorbarh() +
+  labs(title = "Coefficient Plot", x = "Estimate", y = "Term")
+```
+
+## Model Evaluation: R-squared
+
+- R-squared measures the proportion of variance explained by the model
+- Ranges from 0 to 1 (0% to 100%)
+- Higher values indicate better fit, but beware of overfitting
+
+```{r r-squared}
+glance(lm_fit) %>% dplyr::select(r.squared, adj.r.squared)
+```
+
+## Model Augmentation
+
+Adding fitted values and residuals to the original data:
+
+```{r augment-model}
+augment(lm_fit, new_data = mtcars)
+```
+
+## Predictions with New Data
+
+```{r predict-new-data}
+newdata <- mtcars %>%
+  head(6) %>%
+  mutate(wt = wt + 1)
+
+augment(lm_fit, new_data = newdata)
+```
+
+## Visualizing Predictions with Confidence Intervals
+
+```{r visualize-predictions, fig.width=6, fig.height=3.5}
+# Simpler bivariate model for 2D plotting
+lm_fit2 <- lm_spec %>%
+  fit(mpg ~ wt, data = mtcars)
+
+au <- augment(lm_fit2, new_data = newdata, interval = "prediction")
+
+ggplot(au, aes(wt, mpg)) +
+  geom_point() +
+  geom_line(aes(y = .pred)) +
+  # geom_ribbon(aes(ymin = .pred_lower, ymax = .pred_upper), col = NA, alpha = 0.3) +
+  labs(title = "Predictions with Confidence Intervals")
+```
+
+## Residual Analysis
+
+- Residuals: Differences between observed and predicted values
+- Assumptions:
+  1. Linearity
+  2. Independence
+  3. Homoscedasticity
+  4. Normality
+
+```{r residual-plot, echo=FALSE, fig.width=6, fig.height=3.5}
+au <- augment(lm_fit)
+ggplot(au, aes(x = .pred, y = .resid)) +
+  geom_point() +
+  geom_hline(yintercept = 0, linetype = "dashed", color = "red") +
+  labs(title = "Residual Plot", x = "Predicted Values", y = "Residuals")
+```
+
+## Diagnostic Plots: Leverage vs Standardized Residuals
+
+```{r leverage-residuals-plot, fig.width=6, fig.height=3.5}
+ggplot(au, aes(.hat, .std.resid)) +
+  geom_vline(size = 2, colour = "white", xintercept = 0) +
+  geom_hline(size = 2, colour = "white", yintercept = 0) +
+  geom_point() +
+  geom_smooth(se = FALSE) +
+  labs(title = "Leverage vs Standardized Residuals",
+       x = "Leverage", y = "Standardized Residuals")
+```
+
+## Diagnostic Plots: Cook's Distance
+
+```{r cooks-distance-plot, fig.width=6, fig.height=3.5}
+ggplot(au, aes(.hat, .cooksd)) +
+  geom_vline(xintercept = 0, colour = NA) +
+  geom_abline(slope = seq(0, 3, by = 0.5), colour = "white") +
+  geom_smooth(se = FALSE) +
+  geom_point() +
+  labs(title = "Cook's Distance Plot",
+       x = "Leverage", y = "Cook's Distance")
+```
+
+## Model Diagnostics with {performance}
+
+The {performance} package provides tools for model evaluation:
+
+```{r performance-checks, fig.width=8, fig.height=4}
+check_model(lm_fit$fit)
+```
+
+## Comparing Models
+
+Use {performance} to compare multiple models:
+
+```{r compare-models}
+model1 <- lm_spec %>% fit(mpg ~ wt, data = mtcars)
+model2 <- lm_spec %>% fit(mpg ~ wt + hp, data = mtcars)
+model3 <- lm_spec %>% fit(mpg ~ wt + hp + qsec, data = mtcars)
+
+compare_performance(model1, model2, model3)
+```
+
+## Feature Engineering for Linear Regression
+
+- Handling categorical variables: dummy coding
+- Interaction terms
+- Polynomial terms for non-linear relationships
+
+```{r feature-engineering}
+# Example of interaction term
+lm_spec %>%
+  fit(mpg ~ wt * hp, data = mtcars) %>%
+  tidy()
+```
+
+## Regularization Techniques
+
+- Ridge Regression (L2)
+- Lasso Regression (L1)
+- Elastic Net (combination of L1 and L2)
+
+These techniques help prevent overfitting and handle multicollinearity.
+
+## Column-wise Models
+
+Applying linear regression to matrix data:
+
+```{r column-wise-models}
+a <- matrix(rnorm(20), nrow = 10)
+b <- a + rnorm(length(a))
+result <- lm_spec %>% fit(b ~ a)
+
+tidy(result)
+```
+
+## Key Takeaways
+
+1. Linear regression is a powerful tool for modeling relationships
+2. Use `tidy()` and `glance()` for easy model summary extraction
+3. Visualize coefficients and their confidence intervals
+4. Use `augment()` to add model predictions to your data
+5. Always check diagnostic plots for model assumptions
+6. Be aware of influential points using leverage and Cook's distance plots
+7. Consider feature engineering and regularization for complex relationships
+8. Use tools like {performance} for comprehensive model diagnostics
+
+## References
+
+1. James, G., Witten, D., Hastie, T., & Tibshirani, R. (2013). An Introduction to Statistical Learning.
+2. Wickham, H., & Grolemund, G. (2016). R for Data Science.
+3. Kuhn, M., & Silge, J. (2022). Tidy Modeling with R.
+4. R Core Team (2021). R: A language and environment for statistical computing.
+
+
+
