@@ -129,7 +129,7 @@ print(importance)
 ```
 ## 9. How about testing a model with only a single parameter
 
-```{r create_recipe}
+```{r create_recipe_SOX10}
 lm_rec_SOX10 <- recipe(dependency ~ SOX10, data = train_data) %>%
   step_zv(all_predictors()) %>%
   step_normalize(all_predictors())
