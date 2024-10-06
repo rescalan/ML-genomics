@@ -1,0 +1,443 @@
+---
+title: "Class 4 - ML in genomics: Identifying unknown gene dependency from expression data"
+author: "Renan Escalante"
+format: revealjs
+---
+
+## Introduction
+
+In this class, we'll use gene expression data to predict dependency scores for an unknown gene. Our goal is to identify the likely dependency gene based on the best predictors of the dependency scores.
+
+## Data Preparation (1/2)
+
+Let's start by loading the necessary libraries and data:
+
+```{r}
+#| echo: true
+#| message: false
+#| warning: false
+
+library(tidyverse)
+library(tidymodels)
+
+# Load the local dataset
+data <- read_csv(here::here("class_4_linear_regression/depmap/dependency_score_to_predict.csv"))
+
+# Display the first few rows and summary of the dataset
+head(data)
+summary(data)
+```
+
+## Data Preparation (2/2)
+
+Now, let's prepare the data for modeling:
+
+```{r}
+#| echo: true
+
+# Separate the target variable (dependency score) and predictors
+model_data <- data %>%
+  select(cell_line = depmap_id, 
+         dependency = crispr_dep_map_public_24q2_score_chronos, 
+         everything(), 
+         -cell_line_name, -primary_disease, -lineage, -lineage_subtype)
+
+# Remove any rows with NA values
+model_data <- model_data %>% drop_na()
+
+print(paste("Number of samples:", nrow(model_data)))
+print(paste("Number of predictors:", ncol(model_data) - 2))
+```
+
+## Exploratory Data Analysis
+
+Let's examine the distribution of dependency scores:
+
+```{r}
+#| echo: true
+#| fig-width: 10
+#| fig-height: 6
+
+# Distribution of dependency scores
+ggplot(model_data, aes(x = dependency)) +
+  geom_histogram(bins = 30) +
+  ggtitle("Distribution of Dependency Scores")
+```
+
+## Correlations with Gene Expression (1/2)
+
+We'll look at the top correlated genes with the dependency score:
+
+```{r}
+#| echo: true
+
+# Correlations between dependency and gene expression
+correlations <- model_data %>%
+  select(-cell_line) %>%
+  cor() %>%
+  as.data.frame() %>%
+  rownames_to_column("gene") %>%
+  select(gene, correlation = dependency) %>%
+  arrange(desc(abs(correlation)))
+```
+
+## Correlations with Gene Expression (2/2)
+
+```{r}
+#| echo: true
+
+top_correlated_genes <- head(correlations, 10)
+print(top_correlated_genes)
+```
+
+## Model Building (1/3)
+
+Now, let's split the data, create a recipe, and fit a linear regression model:
+
+```{r}
+#| echo: true
+
+# Split data
+set.seed(123)
+data_split <- initial_split(model_data, prop = 0.8, strata = dependency)
+train_data <- training(data_split)
+test_data <- testing(data_split)
+
+# Create recipe
+recipe <- recipe(dependency ~ ., data = train_data) %>%
+  update_role(cell_line, new_role = "ID") %>%
+  step_normalize(all_predictors())
+```
+
+## Model Building (2/3)
+
+```{r}
+#| echo: true
+
+# Specify model
+lm_spec <- linear_reg() %>%
+  set_engine("lm")
+
+# Create workflow
+workflow <- workflow() %>%
+  add_recipe(recipe) %>%
+  add_model(lm_spec)
+```
+
+## Model Building (3/3)
+
+```{r}
+#| echo: true
+
+# Fit model
+fit <- workflow %>%
+  fit(data = train_data)
+```
+
+## Model Evaluation (1/2)
+
+Let's evaluate our model's performance:
+
+```{r}
+#| echo: true
+
+# Make predictions
+predictions <- fit %>%
+  predict(test_data) %>%
+  bind_cols(test_data)
+
+# Evaluate model
+metrics <- predictions %>%
+  metrics(truth = dependency, estimate = .pred)
+```
+
+## Model Evaluation (2/2)
+
+```{r}
+#| echo: true
+
+print(metrics)
+```
+
+## Model Interpretation (1/2)
+
+We'll examine the coefficients to identify top predictors:
+
+```{r}
+#| echo: true
+
+# Extract coefficients
+coefficients <- fit %>%
+  extract_fit_parsnip() %>%
+  tidy() %>%
+  arrange(desc(abs(estimate)))
+```
+
+## Model Interpretation (2/2)
+
+```{r}
+#| echo: true
+
+print(head(coefficients, 10))
+```
+
+## Actual vs Predicted Values
+
+Let's visualize how well our model is predicting:
+
+```{r}
+#| echo: true
+#| fig-width: 10
+#| fig-height: 6
+
+# Visualize actual vs predicted values
+ggplot(predictions, aes(x = dependency, y = .pred)) +
+  geom_point() +
+  geom_abline(color = "red") +
+  ggtitle("Actual vs Predicted Dependency Scores")
+```
+
+## Feature Importance
+
+We'll calculate feature importance using permutation importance:
+
+```{r}
+#| echo: true
+#| fig-width: 10
+#| fig-height: 6
+
+library(vip)
+
+# Calculate variable importance
+importance <- fit %>%
+  extract_fit_parsnip() %>%
+  vip(method = "permute", target = "dependency", metric = "rmse", 
+      pred_wrapper = predict, train = train_data)
+
+importance
+```
+
+## Regularized Linear Regression (1/4)
+
+Now, let's use regularized linear regression models:
+
+```{r}
+#| echo: true
+#| message: false
+#| warning: false
+
+library(glmnet)
+
+# Create a recipe for preprocessing
+reg_recipe <- recipe(dependency ~ ., data = train_data) %>%
+  update_role(cell_line, new_role = "ID") %>%
+  step_zv(all_predictors()) %>%
+  step_nzv(all_predictors()) %>%
+  step_normalize(all_predictors())
+```
+
+## Regularized Linear Regression (2/4)
+
+```{r}
+#| echo: true
+
+# Set up the tuning grid
+tune_spec <- linear_reg(penalty = tune(), mixture = tune()) %>%
+  set_engine("glmnet")
+
+# Create the workflow
+tune_wf <- workflow() %>%
+  add_recipe(reg_recipe) %>%
+  add_model(tune_spec)
+```
+
+## Regularized Linear Regression (3/4)
+
+```{r}
+#| echo: true
+
+# Set up the grid of tuning parameters
+tune_grid_df <- grid_regular(
+  penalty(range = c(-5, 5), trans = log10_trans()),
+  mixture(range = c(0, 1)),
+  levels = c(penalty = 4, mixture = 3)
+)
+
+# Set up cross-validation
+set.seed(123)
+cv_folds <- vfold_cv(train_data, v = 5)
+```
+
+## Regularized Linear Regression (4/4)
+
+```{r}
+#| echo: true
+
+# Perform tuning
+tune_results <- tune_grid(
+  tune_wf,
+  resamples = cv_folds,
+  grid = tune_grid_df,
+  metrics = metric_set(rmse, rsq)
+)
+```
+
+## Best Models (1/2)
+
+Let's look at the best models from our tuning:
+
+```{r}
+#| echo: true
+
+# Display the best models
+top_models <- tune_results %>%
+  show_best(metric = "rmse", n = 5)
+print(top_models)
+```
+
+## Best Models (2/2)
+
+```{r}
+#| echo: true
+
+# Select the best model
+best_model <- tune_results %>%
+  select_best(metric = "rmse")
+```
+
+## Final Model (1/3)
+
+We'll finalize our workflow with the best model:
+
+```{r}
+#| echo: true
+
+# Finalize the workflow with the best model
+final_wf <- tune_wf %>%
+  finalize_workflow(best_model)
+
+# Fit the final model
+final_fit <- final_wf %>%
+  fit(data = train_data)
+```
+
+## Final Model (2/3)
+
+```{r}
+#| echo: true
+
+# Extract coefficients
+final_coef <- final_fit %>%
+  extract_fit_parsnip() %>%
+  tidy() %>%
+  filter(estimate != 0) %>%
+  arrange(desc(abs(estimate)))
+```
+
+## Final Model (3/3)
+
+```{r}
+#| echo: true
+
+# Print top 20 coefficients
+print(head(final_coef, 20))
+```
+
+## Top Predictors Visualization
+
+Let's visualize the top predictors from our regularized regression:
+
+```{r}
+#| echo: true
+#| fig-width: 10
+#| fig-height: 6
+
+# Plot top 20 coefficients
+final_coef %>%
+  slice_max(abs(estimate), n = 20) %>%
+  ggplot(aes(x = reorder(term, abs(estimate)), y = estimate)) +
+  geom_col() +
+  coord_flip() +
+  labs(title = "Top 20 Predictors from Regularized Regression",
+       x = "Gene", y = "Coefficient Estimate") +
+  theme_minimal()
+```
+
+## Model Performance (1/2)
+
+Let's evaluate the performance of our final model:
+
+```{r}
+#| echo: true
+
+# Make predictions on test set
+test_preds <- final_fit %>%
+  predict(test_data) %>%
+  bind_cols(test_data)
+
+# Calculate performance metrics
+test_metrics <- test_preds %>%
+  metrics(truth = dependency, estimate = .pred)
+```
+
+## Model Performance (2/2)
+
+```{r}
+#| echo: true
+
+print(test_metrics)
+```
+
+## Actual vs Predicted (Regularized Regression)
+
+Let's visualize the actual vs predicted values for our regularized regression model:
+
+```{r}
+#| echo: true
+#| fig-width: 10
+#| fig-height: 6
+
+# Plot actual vs predicted
+ggplot(test_preds, aes(x = dependency, y = .pred)) +
+  geom_point(alpha = 0.5) +
+  geom_abline(color = "red") +
+  labs(title = "Actual vs Predicted Dependency Scores (Regularized Regression)",
+       x = "Actual", y = "Predicted") +
+  theme_minimal()
+```
+
+## Top Genes Comparison
+
+Let's compare the top genes from our regularized regression with our previous analysis:
+
+```{r}
+#| echo: true
+
+# Compare top genes from regularized regression with previous analysis
+top_genes_reg <- final_coef %>%
+  slice_max(abs(estimate), n = 10) %>%
+  pull(term)
+
+print(top_genes_reg)
+```
+
+## Conclusion
+
+In this analysis, we've:
+
+1. Built linear regression and regularized regression models to predict dependency scores from gene expression data.
+2. Performed exploratory data analysis and feature importance analysis.
+3. Identified genes that are most predictive of the dependency scores.
+
+The genes consistently appearing at the top of both analyses are the strongest candidates for being the dependency gene itself or closely related to it in function or pathway.
+
+## Next Steps
+
+To further investigate:
+
+1. Research the top predictive genes and their known interactions.
+2. Look for genes in similar pathways or with similar functions.
+3. Consider the biological plausibility of these genes being critical dependencies in cancer cells.
+4. If possible, validate these predictions experimentally or with additional datasets.
+
+Remember, while this analysis provides strong indications, definitive identification of the dependency gene would require additional biological validation.
