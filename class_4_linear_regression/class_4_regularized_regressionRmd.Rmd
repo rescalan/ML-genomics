@@ -142,23 +142,6 @@ Back to our house price prediction:
 - Unlike RMSE, this treats all errors equally. A $60,000 error is treated as 1.5 times worse than a $40,000 error, not 2.25 times worse.
 - MAE is like saying, "On average, I miss the true price by $40,000, sometimes more, sometimes less."
 
-## When to Use Each Metric
-
-RMSE:
-- When you want to heavily penalize large errors
-- When your target variable is in a meaningful scale
-- When outliers are particularly undesirable
-
-R-squared:
-- When you want a metric that's easy to interpret across different datasets
-- To compare models for the same dependent variable
-- When you want to explain the model's performance to non-technical stakeholders
-
-MAE:
-- When you want to treat all errors equally (not penalize large errors as heavily as RMSE)
-- When working with datasets that may contain outliers
-- When you need a metric that's easily interpretable in terms of the original units
-
 ## Comparing Metrics in tidymodels
 
 In tidymodels, you can easily calculate these metrics:
@@ -175,3 +158,39 @@ results <- fit_resamples(
 ```
 
 This allows you to evaluate your models using multiple metrics simultaneously.
+
+## Regression Metrics Overview (1/4)
+
+| Metric | Function | Definition | When to Use |
+|--------|----------|------------|-------------|
+| Root Mean Squared Error | rmse(), rmse_vec() | Square root of the average of squared differences between prediction and actual observation | When you want to penalize large errors more heavily; useful for applications where large errors are particularly undesirable |
+| R-squared | rsq(), rsq_vec() | Proportion of variance in the dependent variable that is predictable from the independent variable(s) | When you want a metric that's easy to interpret across different datasets; to explain model performance to non-technical stakeholders |
+| Traditional R-squared | rsq_trad(), rsq_trad_vec() | Similar to R-squared, but calculated using a traditional formula | When comparing to models fit outside of tidymodels that use the traditional R-squared calculation |
+
+## Regression Metrics Overview (2/4)
+
+| Metric | Function | Definition | When to Use |
+|--------|----------|------------|-------------|
+| Mean Signed Deviation | msd(), msd_vec() | Average of the differences between prediction and actual observation | When the direction of error (over or under prediction) is important |
+| Mean Absolute Error | mae(), mae_vec() | Average of the absolute differences between prediction and actual observation | When you want to treat all errors equally, regardless of their direction; less sensitive to outliers than RMSE |
+| Mean Percentage Error | mpe(), mpe_vec() | Average percentage difference between predicted and actual values | When you want to measure bias in your predictions (tendency to over or underestimate) |
+| Mean Absolute Percent Error | mape(), mape_vec() | Average of the absolute percentage differences between predicted and actual values | When you want to express error in percentage terms, making it easier to compare across different scales |
+
+## Regression Metrics Overview (3/4)
+
+| Metric | Function | Definition | When to Use |
+|--------|----------|------------|-------------|
+| Symmetric Mean Absolute Percentage Error | smape(), smape_vec() | Variation of MAPE that is more robust to outliers and handles zero values better | When dealing with data that includes zeros or when you want a percentage error that treats over and under predictions more symmetrically |
+| Mean Absolute Scaled Error | mase(), mase_vec() | MAE scaled by the MAE of a naive forecast | When you want to compare forecast accuracy across different scales |
+| Concordance Correlation Coefficient | ccc(), ccc_vec() | Measures both precision and accuracy to determine how far the observed data deviate from the line of perfect concordance | When you want to assess both how close the relationship is to the line y=x and how far the points deviate from this line |
+| Ratio of Performance to Inter-Quartile | rpiq(), rpiq_vec() | Ratio of the inter-quartile range of the observed values to the RMSE | When dealing with non-normally distributed data; often used in spectroscopy and chemometrics |
+
+## Regression Metrics Overview (4/4)
+
+| Metric | Function | Definition | When to Use |
+|--------|----------|------------|-------------|
+| Ratio of Performance to Deviation | rpd(), rpd_vec() | Ratio of the standard deviation of the observed values to the RMSE | When you want to assess model performance relative to the overall variability in the data |
+| Huber Loss | huber_loss(), huber_loss_vec() | Loss function that is less sensitive to outliers in data than the squared error loss | When you want a compromise between squared error loss and absolute error loss; robust to outliers |
+| Pseudo-Huber Loss | huber_loss_pseudo(), huber_loss_pseudo_vec() | Smooth approximation of the Huber loss | When you want the benefits of Huber loss but need a continuously differentiable function |
+| Index of Ideality of Correlation | iic(), iic_vec() | Metric that combines correlation coefficient with the slope of the regression line | When you want to assess both the linearity and the accuracy of predictions |
+| Poisson Log Loss | poisson_log_loss(), poisson_log_loss_vec() | Logarithmic loss function specific to Poisson-distributed data | When working with count data or rates, especially in fields like epidemiology or reliability analysis |

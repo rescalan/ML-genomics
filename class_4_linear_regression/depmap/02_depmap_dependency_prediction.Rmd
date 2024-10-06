@@ -68,4 +68,3 @@ tailored_data_for_ML_dataset %>%
 ```{r}
 tailored_data_for_ML_dataset %>% write_csv(here::here("class_4_linear_regression/depmap/dependency_score_to_predict.csv"))
 ```
-

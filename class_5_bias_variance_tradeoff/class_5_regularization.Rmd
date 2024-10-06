@@ -1,0 +1,144 @@
+---
+title: "Class 5 (part 1): Bias-Variance Tradeoff"
+author: "Renan Escalante"
+date: "`r Sys.Date()`"
+output:
+  ioslides_presentation:
+    widescreen: true
+    smaller: true
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(here)
+library(tidyverse)
+```
+
+```{=html}
+<style>
+.scaled-image {
+  max-width: 100%;
+  max-height: 80vh;
+  display: block;
+  margin: auto;
+}
+</style>
+```
+
+
+
+```{r, include=FALSE}
+image_dir <- here::here("class_5_bias_variance_tradeoff/bias_variance/")
+image_files <- list.files(path = image_dir, 
+                          pattern = "\\.jpg$|\\.png$|\\.gif$|\\.jpeg$", 
+                          full.names = TRUE)
+
+# Check if there are at least two images
+if (length(image_files) >= 2) {
+  specific_image_1 <- image_files[1]
+  specific_image_2 <- image_files[2]
+} else {
+  specific_image_1 <- NULL
+  specific_image_2 <- NULL
+}
+```
+
+
+## Variance to the mean (total variance) and variance from fit
+
+The variance to the mean or total variance can be expressed as:
+
+$$\tiny \text{Var}(\text{mean}) = \text{SS}_\text{mean} = \sum_{i=1}^n (y_i - \bar{y})^2$$
+
+The distance between data and a line is called a **residual**. We can now compute the variation to the fit also known as sum of square residuals:
+
+$$\tiny \text{Var(fit)} = \text{SS}_\text{fit} = \sum(y_i - \text{fit})^2$$
+
+
+
+```{r,  out.width="30%", echo=FALSE}
+# Display images side by side if available
+if (!is.null(specific_image_1) && !is.null(specific_image_2)) {
+  knitr::include_graphics(c(specific_image_1, specific_image_2))
+} else {
+  cat("Not enough images available to display.")
+}
+
+```
+
+## Variance to the mean (total variance) and variance from fit
+
+```{r,  out.width="15%", echo=FALSE}
+# Display images side by side if available
+if (!is.null(specific_image_1) && !is.null(specific_image_2)) {
+  knitr::include_graphics(c(specific_image_1, specific_image_2))
+} else {
+  cat("Not enough images available to display.")
+}
+
+```
+
+* The blue squares represent the *variance that remains* even  after the data has been fitted
+
+* Then we ask, does the mean fit the data better than a  line?
+
+* We can compute the variance not explained by the model as a fraction of the overall variance.
+
+
+$$\frac{\text{Var(line)}}{\text{Var(mean)}}$$
+
+* We take the complement $(1 - \frac{\text{Var(line)}}{\text{Var(mean)}})$ to compute the variance explained by the model
+
+$$R^2 = \frac{\text{Var(mean)} - \text{Var(line)}}{\text{Var(mean)}} = \frac{\text{Variance model}}{\text{Total Variance}}$$
+
+## Sum of square residuals
+
+$$R^2 = \frac{\text{Var(mean)} - \text{Var(line)}}{\text{Var(mean)}} = \frac{\text{Variance model}}{\text{Total Variance}}$$
+
+* The variation around the line will never be bigger than the variation around the mean so $R^2$ is bounded between 0 and 1
+
+* **$R^2$ ** can be thought of as a percentage because we are dividing by Var(mean)
+
+* When **$R^2$** is closer to 1 them it means that the model is a good fit. This happens because Var(line) should be so small,  there is very little variance left after we fit a model
+
+* When **$R^2$** is closer to 0 them it means that the model is a bad fit
+
+
+## Bias-Variance trade off
+
+Bias distance of the model to the training , variance distance of the model to test
+
+
+
+
+## Regularization
+
+```{r, echo=FALSE, out.width="80%", fig.align="center"}
+# Choose a specific image, for example, the first one
+specific_image <- image_files[4]
+knitr::include_graphics(specific_image)
+```
+
+## Loss function
+
+## Ridge regression
+
+The loss function changes
+
+
+## Lasso regression
+
+The loss function changes
+
+
+# Elastic net
+
+
+## Regularization
+
+
+```{r, echo=FALSE, out.width="50%", fig.align="center"}
+# Choose a specific image, for example, the first one
+specific_image <- image_files[3]
+knitr::include_graphics(specific_image)
+```
