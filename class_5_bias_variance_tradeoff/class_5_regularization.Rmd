@@ -89,9 +89,12 @@ $$\frac{\text{Var(line)}}{\text{Var(mean)}}$$
 
 * We take the complement $(1 - \frac{\text{Var(line)}}{\text{Var(mean)}})$ to compute the variance explained by the model
 
-$$R^2 = \frac{\text{Var(mean)} - \text{Var(line)}}{\text{Var(mean)}} = \frac{\text{Variance model}}{\text{Total Variance}}$$
+$$R^2 = \frac{\text{Var(mean)} - \text{Var(line)}}{\text{Var(mean)}} = 1 - \frac{\text{Var(line)}}{\text{Var(mean)}} = 1 - \frac{SS_{residual}}{SS_{total}}$$
 
-## Sum of square residuals
+
+
+
+## R-squared interpretation
 
 $$R^2 = \frac{\text{Var(mean)} - \text{Var(line)}}{\text{Var(mean)}} = \frac{\text{Variance model}}{\text{Total Variance}}$$
 
@@ -106,33 +109,42 @@ $$R^2 = \frac{\text{Var(mean)} - \text{Var(line)}}{\text{Var(mean)}} = \frac{\te
 
 ## Bias-Variance trade off
 
-Bias distance of the model to the training , variance distance of the model to test
+* **Bias** distance of the model to the training
+* **Variance** distance of the model to test
 
+- As model complexity increases:
+  - Bias decreases, Variance increases
+  - R² on training data typically increases
+- High R² on training data doesn't guarantee good test performance
 
+## Scenarios of Bias-Variance and R-squared
 
+- **High Bias (Underfitting)**:
+  - Low R² on both training and test sets
+- **High Variance (Overfitting)**:
+  - High R² on training set
+  - Low R² on test set
+- **Optimal Model**:
+  - Relatively high R² on both training and test sets
 
-## Regularization
+## Visualizing Bias-Variance Tradeoff
 
-```{r, echo=FALSE, out.width="80%", fig.align="center"}
-# Choose a specific image, for example, the first one
-specific_image <- image_files[4]
-knitr::include_graphics(specific_image)
+```{r bias_variance_plot, echo=FALSE}
+model_complexity <- seq(1, 10)
+bias <- 10 / model_complexity
+variance <- 0.1 * model_complexity^2
+total_error <- bias + variance
+
+ggplot(data.frame(model_complexity, bias, variance, total_error), aes(x = model_complexity)) +
+  geom_line(aes(y = bias, color = "Bias"), size = 1) +
+  geom_line(aes(y = variance, color = "Variance"), size = 1) +
+  geom_line(aes(y = total_error, color = "Total Error"), size = 1) +
+  labs(title = "Bias-Variance Tradeoff",
+       x = "Model Complexity",
+       y = "Error",
+       color = "Error Type") +
+  theme_minimal()
 ```
-
-## Loss function
-
-## Ridge regression
-
-The loss function changes
-
-
-## Lasso regression
-
-The loss function changes
-
-
-# Elastic net
-
 
 ## Regularization
 
@@ -142,3 +154,13 @@ The loss function changes
 specific_image <- image_files[3]
 knitr::include_graphics(specific_image)
 ```
+
+## Bias-Variance trade off
+
+* **Bias** distance of the model to the training
+* **Variance** distance of the model to test
+
+- As model complexity increases:
+  - Bias decreases, Variance increases
+  - R² on training data typically increases
+- High R² on training data doesn't guarantee good test performance

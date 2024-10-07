@@ -9,10 +9,10 @@ output:
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = FALSE)
+knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE, fig.width = 10, fig.height = 5)
 library(tidyverse)
+library(tidymodels)
 library(broom)
-library(pROC)
 ```
 
 ## 1. Introduction to Logistic Regression
@@ -63,7 +63,7 @@ library(pROC)
 
 ### The Logistic Function (Sigmoid Curve)
 
-```{r sigmoid, fig.height=4}
+```{r sigmoid}
 sigmoid <- function(x) {
   1 / (1 + exp(-x))
 }
@@ -71,7 +71,8 @@ sigmoid <- function(x) {
 ggplot(data.frame(x = c(-6, 6)), aes(x)) +
   stat_function(fun = sigmoid) +
   labs(x = "Log odds", y = "Probability") +
-  ggtitle("Sigmoid (Logistic) Function")
+  ggtitle("Sigmoid (Logistic) Function") +
+  theme_minimal(base_size = 16)
 ```
 
 ## 6. Interpreting the Logistic Regression Equation
@@ -117,33 +118,54 @@ ggplot(data.frame(x = c(-6, 6)), aes(x)) +
 ```{r confusion_matrix}
 set.seed(123)
 n <- 100
-x <- rnorm(n)
-y <- rbinom(n, 1, sigmoid(1 + 2 * x))
-model <- glm(y ~ x, family = binomial)
-predictions <- ifelse(predict(model, type = "response") > 0.5, 1, 0)
-conf_matrix <- table(Actual = y, Predicted = predictions)
-knitr::kable(conf_matrix)
+data <- tibble(
+  x = rnorm(n),
+  y = factor(rbinom(n, 1, sigmoid(1 + 2 * x)))
+)
+
+log_reg_spec <- logistic_reg() %>% 
+  set_engine("glm") %>% 
+  set_mode("classification")
+
+log_reg_fit <- log_reg_spec %>% 
+  fit(y ~ x, data = data)
+
+predictions <- predict(log_reg_fit, new_data = data)
+
+logistic_regression_df <- data %>% dplyr::mutate(pred_class = predictions$.pred_class)
+
+conf_mat_df <- conf_mat(logistic_regression_df, truth = y, estimate = pred_class)
+
+autoplot(conf_mat_df, type = "heatmap") +
+  theme_minimal(base_size = 16)
 ```
 
 ## 12. Sensitivity and Specificity
 
 - Sensitivity (True Positive Rate): proportion of actual positives correctly identified
-  - Sensitivity = TP / (TP + FN)
 - Specificity (True Negative Rate): proportion of actual negatives correctly identified
-  - Specificity = TN / (TN + FP)
 
 ```{r sens_spec}
-sensitivity <- conf_matrix[2, 2] / sum(conf_matrix[2, ])
-specificity <- conf_matrix[1, 1] / sum(conf_matrix[1, ])
-cat("Sensitivity:", round(sensitivity, 3), "\n")
-cat("Specificity:", round(specificity, 3))
+sens_spec <- conf_mat_df %>%
+  summary() %>%
+  select(-.estimator) %>%
+  filter(.metric %in% c("sens", "spec"))
+
+knitr::kable(sens_spec, digits = 3)
 ```
 
 ## 13. ROC (Receiver Operating Characteristic) Curves
 
-```{r roc_curve, fig.height=4}
-roc_obj <- roc(y, predict(model, type = "response"))
-plot(roc_obj, main = "ROC Curve")
+```{r roc_curve}
+predictions_prob <- predict(log_reg_fit, new_data = data, type = "prob")
+
+logistic_regression_roc <- bind_cols(data,
+                                     predictions_prob)
+
+roc_curve_df <- roc_curve(logistic_regression_roc, truth = y, .pred_1)
+
+autoplot(roc_curve_df) +
+  theme_minimal(base_size = 16)
 ```
 
 ## 14. AUC (Area Under the Curve)
@@ -157,7 +179,8 @@ plot(roc_obj, main = "ROC Curve")
   - 0.9-1.0: Outstanding
 
 ```{r auc}
-cat("AUC:", round(auc(roc_obj), 3))
+auc_value <- roc_auc(logistic_regression_roc, truth = y, .pred_1, estimator = "binary")
+knitr::kable(auc_value, digits = 3)
 ```
 
 ## 15. Advanced Topics in Logistic Regression
@@ -210,33 +233,34 @@ cat("AUC:", round(auc(roc_obj), 3))
 - High-dimensional data: Regularized regression (Lasso, Ridge)
 - Complex patterns: Support Vector Machines, Neural Networks
 
-## 20. Hands-on Exercise: Implementing Logistic Regression in R
+## 20. Hands-on Exercise: Implementing Logistic Regression with tidymodels
 
 ### Data Preparation
 
 ```{r data_prep, echo=TRUE}
 set.seed(123)
 n <- 1000
-gene_expression <- rnorm(n)
-mutation_count <- rpois(n, lambda = 2)
-is_disease_gene <- rbinom(n, 1, sigmoid(1 + 0.5 * gene_expression + 0.3 * mutation_count))
-
 gene_data <- tibble(
-  gene_expression = gene_expression,
-  mutation_count = mutation_count,
-  is_disease_gene = is_disease_gene
+  gene_expression = rnorm(n),
+  mutation_count = rpois(n, lambda = 2),
+  is_disease_gene = factor(rbinom(n, 1, sigmoid(1 + 0.5 * gene_expression + 0.3 * mutation_count)))
 )
 
 head(gene_data)
 ```
 
-## 21. Model Fitting Using glm() Function
+## 21. Model Fitting Using tidymodels
 
 ```{r model_fitting, echo=TRUE}
-model <- glm(is_disease_gene ~ gene_expression + mutation_count, 
-             data = gene_data, family = binomial)
+log_reg_spec <- logistic_reg() %>% 
+  set_engine("glm") %>% 
+  set_mode("classification")
 
-summary(model)
+log_reg_fit <- log_reg_spec %>% 
+  fit(is_disease_gene ~ gene_expression + mutation_count, data = gene_data)
+
+tidy(log_reg_fit) %>% 
+  knitr::kable(digits = 3)
 ```
 
 ## 22. Interpretation of Results
@@ -246,34 +270,49 @@ summary(model)
 - Mutation count coefficient: increase in log odds for one additional mutation
 
 ```{r odds_ratios, echo=TRUE}
-exp(coef(model))
+tidy(log_reg_fit, exponentiate = TRUE) %>% 
+  knitr::kable(digits = 3)
 ```
 
 Interpretation: 
-- For each unit increase in gene expression, the odds of being a disease gene increase by a factor of `r round(exp(coef(model)[2]), 3)`
-- For each additional mutation, the odds of being a disease gene increase by a factor of `r round(exp(coef(model)[3]), 3)`
+- For each unit increase in gene expression, the odds of being a disease gene increase by a factor of the exponentiated coefficient
+- For each additional mutation, the odds of being a disease gene increase by a factor of the exponentiated coefficient
 
 ## 23. Model Evaluation and Visualization
 
-```{r model_eval, echo=TRUE, fig.height=4}
-# Predicted probabilities
-gene_data$predicted_prob <- predict(model, type = "response")
+```{r model_eval, echo=TRUE}
+# Predictions
+predictions <- predict(log_reg_fit, new_data = gene_data, type = "prob") %>% 
+  bind_cols(gene_data)
 
 # ROC curve
-roc_obj <- roc(gene_data$is_disease_gene, gene_data$predicted_prob)
-auc_value <- auc(roc_obj)
+roc_curve <- roc_curve(predictions, truth = is_disease_gene, .pred_1)
+roc_auc <- roc_auc(predictions, truth = is_disease_gene, .pred_1)
 
 # Plot ROC curve
-plot(roc_obj, main = paste("ROC Curve (AUC =", round(auc_value, 3), ")"))
+autoplot(roc_curve) +
+  labs(title = paste("ROC Curve (AUC =", round(roc_auc$.estimate, 3), ")")) +
+  theme_minimal(base_size = 16)
 
 # Confusion matrix (using 0.5 as threshold)
-conf_matrix <- table(Actual = gene_data$is_disease_gene, 
-                     Predicted = ifelse(gene_data$predicted_prob > 0.5, 1, 0))
-print(conf_matrix)
+predictions_class <- predict(log_reg_fit, new_data = gene_data, type = "class")
 
-# Calculate accuracy
-accuracy <- sum(diag(conf_matrix)) / sum(conf_matrix)
-cat("Accuracy:", round(accuracy, 3))
+prediction_class_df <- bind_cols(gene_data, predictions_class)
+
+
+conf_mat_df <- conf_mat(prediction_class_df, truth = is_disease_gene, estimate = .pred_class)
+
+# Plot confusion matrix
+autoplot(conf_mat_df, type = "heatmap") +
+  theme_minimal(base_size = 16)
 ```
 
-This slide deck provides a comprehensive introduction to logistic regression in the context of machine learning in genomics. It covers the fundamental concepts, model fitting, evaluation techniques, and a practical example using R. The slides include visualizations and code snippets to enhance understanding and demonstrate the implementation of logistic regression.
+```{r}
+# Calculate accuracy
+accuracy <- accuracy(prediction_class_df, truth = is_disease_gene, estimate = .pred_class)
+cat("Accuracy:", round(accuracy$.estimate, 3))
+```
+
+
+
+
