@@ -1,0 +1,279 @@
+---
+title: "Class 5 - ML in genomics: Introduction to Logistic Regression"
+author: "Renan Escalante"
+date: "`r Sys.Date()`"
+output: 
+  ioslides_presentation:
+    widescreen: true
+    smaller: true
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+library(tidyverse)
+library(broom)
+library(pROC)
+```
+
+## 1. Introduction to Logistic Regression
+
+### What is Logistic Regression?
+
+- A statistical method for analyzing a dataset with one or more independent variables that determine an outcome
+- Used when the outcome is binary (0/1, Yes/No, True/False)
+- Predicts the probability of an observation belonging to a particular category
+
+### Comparison with Linear Regression
+
+- Linear regression: predicts continuous outcomes
+- Logistic regression: predicts categorical outcomes (usually binary)
+- Both are generalized linear models (GLMs)
+
+## 2. Applications in Genomics and Bioinformatics
+
+- Predicting gene function
+- Classifying genetic variants (e.g., pathogenic vs. benign)
+- Identifying disease risk factors
+- Analyzing gene expression data
+- Predicting protein-protein interactions
+
+## 3. Fundamentals of Logistic Regression
+
+### Odds and Log Odds
+
+- Odds: ratio of the probability of success to the probability of failure
+  - Odds = P(success) / P(failure) = P(success) / (1 - P(success))
+- Log odds (logit): natural logarithm of the odds
+  - Log odds = ln(odds) = ln(P(success) / (1 - P(success)))
+
+### Probability vs. Odds
+
+- Probability: ranges from 0 to 1
+- Odds: ranges from 0 to infinity
+- Relationship: odds = probability / (1 - probability)
+
+## 4. The Logit Function
+
+- Logit function: transforms probability to log odds
+- Formula: logit(p) = ln(p / (1 - p))
+- Inverse logit (sigmoid) function: transforms log odds to probability
+- Formula: p = 1 / (1 + e^(-logit(p)))
+
+## 5. Logistic Regression Model
+
+### The Logistic Function (Sigmoid Curve)
+
+```{r sigmoid, fig.height=4}
+sigmoid <- function(x) {
+  1 / (1 + exp(-x))
+}
+
+ggplot(data.frame(x = c(-6, 6)), aes(x)) +
+  stat_function(fun = sigmoid) +
+  labs(x = "Log odds", y = "Probability") +
+  ggtitle("Sigmoid (Logistic) Function")
+```
+
+## 6. Interpreting the Logistic Regression Equation
+
+- General form: log(p / (1 - p)) = β₀ + β₁X₁ + β₂X₂ + ... + βₖXₖ
+- p: probability of the outcome
+- β₀: intercept
+- β₁, β₂, ..., βₖ: coefficients for predictors X₁, X₂, ..., Xₖ
+
+## 7. Coefficients and Their Meaning
+
+- Intercept (β₀): log odds when all predictors are zero
+- Coefficients (β₁, β₂, ..., βₖ):
+  - Change in log odds for a one-unit increase in the predictor
+  - Exponentiated coefficient: odds ratio for a one-unit increase in the predictor
+
+## 8. Fitting the Logistic Regression Model
+
+### Maximum Likelihood Estimation
+
+- Goal: find coefficients that maximize the likelihood of observing the data
+- Iterative process: no closed-form solution like in linear regression
+- Optimization algorithms: Newton-Raphson, gradient descent
+
+## 9. Comparison with Least Squares Method
+
+- Linear regression: minimizes sum of squared residuals
+- Logistic regression: maximizes likelihood function
+- Both aim to find the best-fitting model, but use different criteria
+
+## 10. Iterative Process of Finding the Best Fit
+
+1. Start with initial guesses for coefficients
+2. Calculate predicted probabilities
+3. Compute the likelihood of the observed data
+4. Adjust coefficients to increase likelihood
+5. Repeat steps 2-4 until convergence
+
+## 11. Evaluating Logistic Regression Models
+
+### Confusion Matrix
+
+```{r confusion_matrix}
+set.seed(123)
+n <- 100
+x <- rnorm(n)
+y <- rbinom(n, 1, sigmoid(1 + 2 * x))
+model <- glm(y ~ x, family = binomial)
+predictions <- ifelse(predict(model, type = "response") > 0.5, 1, 0)
+conf_matrix <- table(Actual = y, Predicted = predictions)
+knitr::kable(conf_matrix)
+```
+
+## 12. Sensitivity and Specificity
+
+- Sensitivity (True Positive Rate): proportion of actual positives correctly identified
+  - Sensitivity = TP / (TP + FN)
+- Specificity (True Negative Rate): proportion of actual negatives correctly identified
+  - Specificity = TN / (TN + FP)
+
+```{r sens_spec}
+sensitivity <- conf_matrix[2, 2] / sum(conf_matrix[2, ])
+specificity <- conf_matrix[1, 1] / sum(conf_matrix[1, ])
+cat("Sensitivity:", round(sensitivity, 3), "\n")
+cat("Specificity:", round(specificity, 3))
+```
+
+## 13. ROC (Receiver Operating Characteristic) Curves
+
+```{r roc_curve, fig.height=4}
+roc_obj <- roc(y, predict(model, type = "response"))
+plot(roc_obj, main = "ROC Curve")
+```
+
+## 14. AUC (Area Under the Curve)
+
+- Measures the overall performance of the classifier
+- Ranges from 0.5 (random guessing) to 1 (perfect classification)
+- Interpretation:
+  - 0.5-0.7: Poor
+  - 0.7-0.8: Acceptable
+  - 0.8-0.9: Excellent
+  - 0.9-1.0: Outstanding
+
+```{r auc}
+cat("AUC:", round(auc(roc_obj), 3))
+```
+
+## 15. Advanced Topics in Logistic Regression
+
+### Multiple Logistic Regression
+
+- Uses multiple predictors to model the outcome
+- Formula: log(p / (1 - p)) = β₀ + β₁X₁ + β₂X₂ + ... + βₖXₖ
+- Allows for controlling confounding variables
+
+## 16. Categorical Predictors in Logistic Regression
+
+- Can include categorical variables as predictors
+- Use dummy coding or contrast coding
+- Interpretation: effect of each category compared to the reference category
+
+## 17. Interactions in Logistic Regression Models
+
+- Allows for the effect of one predictor to depend on the value of another
+- Can capture complex relationships between predictors
+- Formula: log(p / (1 - p)) = β₀ + β₁X₁ + β₂X₂ + β₃(X₁ * X₂)
+
+## 18. Practical Applications in Genomics
+
+### Example: Predicting Gene Function
+
+- Use gene features (e.g., expression levels, sequence motifs) to predict function
+- Binary outcome: gene has specific function (Yes/No)
+- Predictors: various genomic and proteomic data
+
+### Example: Classifying Genetic Variants
+
+- Predict pathogenicity of genetic variants
+- Binary outcome: pathogenic vs. benign
+- Predictors: conservation scores, functional impact predictions, allele frequencies
+
+## 19. Limitations and Alternatives
+
+### Assumptions of Logistic Regression
+
+1. Binary or ordinal outcome variable
+2. Independence of observations
+3. Little or no multicollinearity among predictors
+4. Linearity of independent variables and log odds
+5. Large sample size
+
+### When to Use Other Classification Methods
+
+- Non-linear relationships: Decision trees, Random Forests
+- High-dimensional data: Regularized regression (Lasso, Ridge)
+- Complex patterns: Support Vector Machines, Neural Networks
+
+## 20. Hands-on Exercise: Implementing Logistic Regression in R
+
+### Data Preparation
+
+```{r data_prep, echo=TRUE}
+set.seed(123)
+n <- 1000
+gene_expression <- rnorm(n)
+mutation_count <- rpois(n, lambda = 2)
+is_disease_gene <- rbinom(n, 1, sigmoid(1 + 0.5 * gene_expression + 0.3 * mutation_count))
+
+gene_data <- tibble(
+  gene_expression = gene_expression,
+  mutation_count = mutation_count,
+  is_disease_gene = is_disease_gene
+)
+
+head(gene_data)
+```
+
+## 21. Model Fitting Using glm() Function
+
+```{r model_fitting, echo=TRUE}
+model <- glm(is_disease_gene ~ gene_expression + mutation_count, 
+             data = gene_data, family = binomial)
+
+summary(model)
+```
+
+## 22. Interpretation of Results
+
+- Intercept: log odds of being a disease gene when gene expression and mutation count are zero
+- Gene expression coefficient: increase in log odds for one unit increase in gene expression
+- Mutation count coefficient: increase in log odds for one additional mutation
+
+```{r odds_ratios, echo=TRUE}
+exp(coef(model))
+```
+
+Interpretation: 
+- For each unit increase in gene expression, the odds of being a disease gene increase by a factor of `r round(exp(coef(model)[2]), 3)`
+- For each additional mutation, the odds of being a disease gene increase by a factor of `r round(exp(coef(model)[3]), 3)`
+
+## 23. Model Evaluation and Visualization
+
+```{r model_eval, echo=TRUE, fig.height=4}
+# Predicted probabilities
+gene_data$predicted_prob <- predict(model, type = "response")
+
+# ROC curve
+roc_obj <- roc(gene_data$is_disease_gene, gene_data$predicted_prob)
+auc_value <- auc(roc_obj)
+
+# Plot ROC curve
+plot(roc_obj, main = paste("ROC Curve (AUC =", round(auc_value, 3), ")"))
+
+# Confusion matrix (using 0.5 as threshold)
+conf_matrix <- table(Actual = gene_data$is_disease_gene, 
+                     Predicted = ifelse(gene_data$predicted_prob > 0.5, 1, 0))
+print(conf_matrix)
+
+# Calculate accuracy
+accuracy <- sum(diag(conf_matrix)) / sum(conf_matrix)
+cat("Accuracy:", round(accuracy, 3))
+```
+
+This slide deck provides a comprehensive introduction to logistic regression in the context of machine learning in genomics. It covers the fundamental concepts, model fitting, evaluation techniques, and a practical example using R. The slides include visualizations and code snippets to enhance understanding and demonstrate the implementation of logistic regression.
