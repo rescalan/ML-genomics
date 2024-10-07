@@ -1,0 +1,220 @@
+random force part - hip-hip hooray it's
+true stead quest hello I'm Josh stommer
+and welcome to stat quest today we're
+doing random forests part two and we're
+gonna focus on missing data and sample
+clustering to be honest the sample
+clustering aspect of random forests is
+my favorite part so I'm really excited
+we're going to cover it here's our data
+set we've got data for four separate
+patients however for patient number four
+we've got some missing data random
+forests consider two types of missing
+data one missing data in the original
+data set used to create the random
+forest and two missing data in a new
+sample that we want to categorize we'll
+start with this one so we want to create
+a random forest from this data however
+we don't know if this patient has
+blocked arteries or their weight
+the general idea for dealing with
+missing data in this context is to make
+an initial guess that could be bad and
+then gradually refine the guess until it
+is hopefully a good guess
+so the initial possibly bad guests for
+the blocked arteries value is just the
+most common value for blocked arteries
+no is the most common value for blocked
+arteries it occurs in two out of three
+samples so no is our initial guess since
+weight is numeric our initial guess will
+be the median value
+in this case the median value is 180
+here's our new data set with the filled
+and missing values now we want to refine
+these guesses we do this by first
+determining which samples are similar to
+the one with missing data so let's talk
+about how to determine similarity step 1
+build a random forest
+step2 run all of the data down all of
+the trees
+we'll start by running all of the data
+down the first tree dooba dooba dooba
+dooba dooba do dooba dooba dooba dooba
+dooba dooba do doo doo doo boo
+notice that sample three and sample for
+both ended up at the same leaf node that
+means they're similar at least that's
+how similarity is defined in random
+forests we keep track of similar samples
+using a proximity matrix the proximity
+matrix has a row for each sample
+and it has a column for each sample
+because sample 3 and sample 4 ended up
+in the same leaf node we put a 1 here we
+also put a 1 here since this position
+also represents samples 3 & 4 because no
+other pair of samples ended in the same
+leaf node our proximity matrix looks
+like this after running the samples down
+the first tree
+now we run all of the data down the
+second tree better boop bop put a
+turbopup better but but but up oh but up
+but but but i don't but i but i but Papa
+note samples two three and four all
+ended up in the same leaf node
+this is what the proximity matrix looked
+like after running the data down the
+first tree and after the second tree we
+add one to any pair of samples that
+ended up in the same leaf node samples
+three and four ended up in the same node
+together again in sample two also ended
+up in that same node now we run all of
+the data down the third tree and here's
+the updated proximity matrix only
+samples three and four ended up in the
+same leaf node
+ultimately we run the data down all the
+trees and the proximity matrix fills in
+then we divide each proximity value by
+the total number of trees in this
+example assume we had 10 trees now we
+use the proximity values for sample 4 to
+make better guesses about the missing
+data
+four blocked arteries we calculate the
+weighted frequency of yes and no using
+proximity values as the weights yes
+occurs in one third of the samples
+no occurs in two-thirds of the samples
+the weighted frequency for yes is the
+frequency of yes times the weight for
+yes the weight for yes equals the
+proximity of yes divided by all of the
+proximities the proximity for yes is the
+proximity value for sample to the only
+one with yes and we divide that by the
+sum of the proximities for sample for
+so the wait for yes is 0.1 thus the
+weighted frequency for yes is 0.03 the
+weighted frequency for no is the
+frequency of no which is 2/3 times the
+weight for now samples 1 & 3 both have
+no with that in mind we can plug in the
+values for the proximity of no / all
+proximities thus the weight for no is
+0.9 and the weighted frequency for no is
+0.6 no has a way higher weighted
+frequency so we'll go with it in other
+words our new improved and revised
+guessed based on the proximities is no
+for blocked arteries for weight we use
+the proximities to calculate a weighted
+average in this case the weighted
+average equals sample ones weight sample
+ones weighted average weight sorry if
+there is any confusion between a
+patient's weight or a samples weight and
+the weight used in the weighted average
+to calculate that weight we start with
+the proximity for sample 1 divided by
+the sum of the proximities
+so sample ones weighted average weight
+is 0.1
+here's the weighted value for sample
+number two who weighs 180 here's the
+weighted average value for sample number
+three who weighs 210 ultimately the
+weighted average of weight is 198 point
+five and remember the weights that we
+used in the weighted average were based
+on proximity x' now that we've revised
+our guesses a little bit we do the whole
+thing over again
+we build a random forest run the data
+through the trees recalculate the
+proximities and recalculate the missing
+values we do this six or seven times
+until the missing values converge ie
+no longer change each time we
+recalculate
+BAM now it's time for an interlude of
+Awesomeness let me show you something
+super cool we can do with the proximity
+matrix this is the proximity matrix
+before we divided each value by 10 the
+number of trees in the pretend random
+forest just for the sake of easy math
+imagine if samples 3 & 4 ended up in the
+same leaf node in all 10 trees
+now we have a 10 here and here after
+dividing by 10 the number of trees in
+the forest we see that the largest
+number in the proximity matrix is 1 1 in
+the proximity matrix means the samples
+are as close as close can be that means
+1 minus the proximity values equals
+distance closest can be equals no
+distance between
+and not close equals far away this is a
+distance matrix and that means we can
+draw heat map with it if you don't know
+what a heat map is check out the stat
+quest
+and we can also draw an MVS plot with it
+and if you don't know what an MVS plot
+is well check out the stat quest I think
+this is super cool because it means that
+no matter what the data are ranks
+multiple choice numeric etc if we can
+use it to make a tree we can draw a heat
+map or an MDS plot to show how the
+samples are related to each other this
+is awesome ok enough fun stuff let's get
+back to the missing data problem
+at long last we'll talk about the second
+method this is when we have missing data
+in a new sample that we want to
+categorize imagine we had already built
+a random forest with existing data and
+wanted to classify this new patient
+so we want to know if they have heart
+disease or not but we don't know if they
+have blocked arteries so we need to make
+a guess about blocked arteries so we can
+run the patient down all the trees in
+the forest
+the first thing we do is create two
+copies of the data one that has heart
+disease and one that doesn't have heart
+disease then we use the iterative method
+we just talked about to make a good
+guess
+about the missing values
+these are the guesses that we came up
+with
+then we run the two samples down the
+trees in the forest and we see which of
+the two is correctly labeled by the
+random forest the most times
+this option was correctly labeled yes in
+all three trees
+this option was only correctly labeled
+no in one tree
+this option wins because it was
+correctly labeled more than the other
+option BAM we filled in the missing data
+and we've classified our sample
+hooray we've made it to the end of
+another exciting stack quest if you like
+this stack quest and want to see more
+please subscribe and if you have any
+suggestions for future stack quests well
+put them in the comments below until
+next time quest on

@@ -1,0 +1,441 @@
+Awesome song and introduction
+mocchi but it's not so complicated stack
+quest hello I'm Josh stormer and welcome
+to stack quest today we're gonna cover
+adaboost and it's gonna be clearly
+explained note this stack quest shows
+how to combine adaboost with decision
+trees because that is the most common
+way to use adaboost so if you're not
+familiar with decision trees check out
+the quest we will also mention random
+forests so if you don't know about them
+check out the quest we'll start by using
+decision trees and random forests to
+explain the three concepts behind
+adaboost then we'll get into the
+nitty-gritty details of how adaboost
+creates a forest of trees from scratch
+and how it's used to make
+classifications so let's start by using
+The three main ideas behind AdaBoost
+decision trees and random forests to
+explain the three main concepts behind
+adaboost
+in a random forest each time you make a
+tree you make a full-sized tree
+some trees might be bigger than others
+but there's no predetermined maximum
+depth in contrast in a forest of trees
+made with adaboost the trees are usually
+just a node and two leaves
+oh no it's the dreaded terminology alert
+a tree with just one node and two leaves
+is called a stump so this is really a
+forest of stumps rather than trees
+stumps are not great at making accurate
+classifications
+for example if we were using this data
+to determine if someone had heart
+disease or not then a full-size decision
+tree would take advantage of all four
+variables that we measured chest pain
+blood circulation blocked arteries and
+weight to make a decision but a stump
+can only use one variable to make a
+decision
+thus stumps are technically weak
+learners however that's the way adaboost
+likes it and it's one of the reasons why
+they are so commonly combined now back
+to the random forest in a random forest
+each tree has an equal vote on the final
+classification this trees vote is worth
+just as much as this trees vote or this
+trees vote in contrast in a forest of
+stumps made with adaboost some stumps
+get more say in the final classification
+than others in this illustration the
+larger stumps get more say in the final
+classification than the smaller stumps
+lastly in a random forest each decision
+tree is made independently of the others
+in other words it doesn't matter if this
+tree was made first or this one
+in contrast in a forest of stumps made
+with adaboost order is important
+the errors that the first stump makes
+influence how the second stump is made
+and the air is that the second stone
+makes influence how the third stump is
+made etc etc etc
+Review of the three main ideas
+to review the three ideas behind
+adaboost our one adaboost combines a lot
+of week learners to make classifications
+the week learners are almost always
+stumps to some stumps get more say in
+the classification than others three
+each stump is made by taking the
+previous stumps mistakes into account
+BAM
+Building a stump with the GINI index
+into the nitty-gritty detail of how to
+create a forest of stumps using adaboost
+first we'll start with some data we
+create a forest of stumps with adaboost
+to predict if a patient has heart
+disease we will make these predictions
+based on a patient's chest pain and
+blocked artery status and their weight
+the first thing we do is give each
+sample a weight that indicates how
+important it is to be correctly
+classified
+note the sample weight is different from
+the patient weight and I'll do the best
+I can to be clear about which of the two
+I'm talking about
+at the start all samples get the same
+weight one divided by the total number
+of samples in this case that's 1/8 and
+that makes the samples all equally
+important
+however after we make the first stump
+these weights will change in order to
+guide how the next stump is created in
+other words we'll talk more about the
+sample weights later now we need to make
+the first stump in the forest this is
+done by finding the variable chest pain
+blocked arteries or patient weight that
+does the best job classifying the
+samples note because all of the weights
+are the same we can ignore them right
+now
+we start by seeing how well chest pain
+classifies the samples of the five
+samples with chest pain three were
+correctly classified as having heart
+disease and two were incorrectly
+classified of the three samples without
+chest pain two were correctly classified
+as not having heart disease and one was
+incorrectly classified
+now we do the same thing for blocked
+arteries and for patient wait
+note we used the techniques described in
+the decision tree stat quest to
+determine that 176 was the best weight
+to separate the patients
+now we calculate the Gini index for the
+three stumps
+the Gini index for patient weight is the
+lowest so this will be the first stump
+in the forest
+Determining the Amount of Say for a stump
+now we need to determine how much say
+this stump will have in the final
+classification remember some stumps get
+more say in the final classification
+than others
+we determine how much say a stump has in
+the final classification based on how
+well it classified the samples
+this stump made one error
+patient who weighs less than 176 has
+heart disease but the stump says they do
+not
+the total error for a stump is the sum
+of the weights associated with the
+incorrectly classified samples
+thus in this case the total error is 1/8
+note because all of the sample weights
+add up to one total air will always be
+between zero for a perfect stump and one
+for a horrible stump we use the total
+error to determine the amount of say
+this stump has in the final
+classification with the following
+formula amount of say equals 1/2 times
+the log of 1 minus the total error
+divided by the total error
+we can draw a graph of the amount of say
+by plugging in a bunch of numbers
+between 0 & 1 for total error the blue
+line tells us the amount of safe for
+total error values between 0 & 1
+when a stump does a good job and the
+total error is small then the amount of
+say is a relatively large positive value
+when a stump is no better at
+classification than flipping a coin ie
+half the stumps are correctly classified
+and half are incorrectly classified and
+the total error equals 0.5 then the
+amount of say will be zero
+and when a stump does a terrible job and
+the total error is close to one in other
+words if the stump consistently gives
+you the opposite classification then the
+amount of say will be a large negative
+value so if a stump votes for heart
+disease the negative amount of say will
+turn that vote into not heart disease
+note if total error is 1 or 0 then this
+equation will freak out in practice a
+small error term is added to prevent
+this from happening
+with patient weight greater than 176 the
+total error is 1/8 so we just plug and
+chug booty today voodoo to pooh-poohed
+and the amount of say that this stump
+has in the final classification is zero
+point nine seven BAM now that we've
+worked out how much say this stump gets
+when classifying a sample let's work out
+how much say the chest pain stump would
+have if it had been the best stump note
+we don't need to do this but I think it
+helps illustrate the concepts we've
+covered so far
+chest pain made three errors
+and the total error equals the sum of
+the weights for the incorrectly
+classified samples be do do booty so the
+total error for chest pain is 3/8 we can
+get a sense of what the amount of say
+will be by looking at the graph when
+total error equals 3/8 so we are
+expecting the amount of say to be
+between 0 and 0.5
+now we plug 3/8 into the formula for the
+amount of say and do the math do t do
+pooty to do D pooh-coo pooh-coo and the
+amount of say that the chest pain stump
+would have had on the final
+classification is 0.42
+I'll leave the blocked artery stump as
+an exercise for the viewer now we know
+how the sample weights for the
+incorrectly classified samples are used
+to determine the amount of say each
+stump gets BAM now we need to learn how
+Updating sample weights
+to modify the weights so that the next
+stump will take the errors that the
+current stump made into account
+let's go back to the first stump that we
+made
+when we created this stump all of the
+sample weights were the same
+and that meant we did not emphasize the
+importance of correctly classifying any
+particular sample but since this stumped
+incorrectly classified this sample we
+will emphasize the need for the next
+stump to correctly classify it by
+increasing its sample weight and
+decreasing all of the other sample
+weights
+let's start by increasing the sample
+wait for the incorrectly classified
+sample
+this is the formula we will use to
+increase the sample weight for the
+sample that was incorrectly classified
+we plug in the sample weight from the
+last stump and we scale one eighth with
+this term
+to get a better understanding of how
+this part will scale the previous sample
+wait let's draw a graph the blue line is
+equal to e raised to the amount of say
+when the amount of say is relatively
+large ie the last stump did a good job
+classifying samples then we will scale
+the previous sample weight with a large
+number this means that the new sample
+weight will be much larger than the old
+one
+and when the amount of say is relatively
+low ie the last stump did not do a very
+good job classifying samples then the
+previous sample weight is scaled by a
+relatively small number
+this means that the new sample weight
+will only be a little larger than the
+old one
+in this example the amount of say was
+zero point nine seven and E raised to
+the zero point nine seven equals two
+point six four that means the new sample
+weight is zero point three three which
+is more than the old one BAM
+now we need to decrease the sample
+weights for all of the correctly
+classified samples
+this is the formula we will use to
+decrease the sample weights the big
+difference is the negative sign in front
+of amount of say
+just like before we plug in the sample
+wait
+and just like before we can get a better
+understanding of how this will scale the
+sample weight by plotting a graph using
+different values for amount of say
+the blue line represents e raised to the
+negative amount of say when the amount
+of se is relatively large then we scale
+the sample weight by a value close to
+zero this will make the new sample
+weight very small
+if the amount of say for the last stump
+is relatively small then we will scale
+the sample weight by a value close to 1
+this means that the new sample weight
+will be just a little smaller than the
+old one
+in this example the amount of say was
+0.97 and e raised to the negative zero
+point nine seven equals zero point three
+eight the new sample weight is zero
+point zero five which is less than the
+old one BAM we will keep track of the
+new sample weights in this column we
+plug in zero point three three for the
+sample that was incorrectly classified
+all of the other samples gets zero point
+zero five now we need to normalize the
+Normalizing the sample weights
+new sample weights so that they will add
+up to one
+right now if you add up the new sample
+weights you get zero point six eight
+so we divide each new sample weight by
+0.68 to get the normalized values
+now when we add up the new sample
+weights we get 1 plus or minus a little
+rounding error
+now we just transfer the normalized
+sample weights to the sample weights
+column since those are what we will use
+for the next stomp
+now we can use the modified sample
+weights to make the second stump in the
+forest BAM
+Using the normalized weights to make the second stump
+in theory we could use the sample
+weights to calculate weighted genie
+indexes to determine which variable
+should split the next stump the weighted
+genie index would put more emphasis on
+correctly classifying this sample the
+one that was miss classified by the last
+stump
+since this sample has the largest sample
+weight
+alternatively instead of using a
+weighted Gini index we can make a new
+collection of samples that contains
+duplicate copies of the samples with the
+largest sample weights
+so we start by making a new but empty
+data set that is the same size as the
+original then we pick a random number
+between 0 and 1 and we see where that
+number falls when you use the sample
+weights like a distribution
+if the number is between 0 and 0.7 then
+we would put this sample into the new
+collection of samples
+and if the number is between 0.7 and
+0.14 then we would put this sample into
+the new collection of samples and if the
+number is between 0.14 and 0.2 1 then we
+would put this sample into the new
+collection of samples and if the number
+is between zero point two one and zero
+point seven zero then we would put this
+sample into the new collection of
+samples etc etc
+for example imagine the first number I
+picked was 0.72 then I would put this
+sample into my new collection of samples
+then I pick another random number and
+get 0.42 and I would put this sample
+into my new collection of samples then I
+pick 0.83 and I would put this sample
+into my new collection of samples then I
+pick 0.51 and I would put this sample
+into my new collection of samples
+note this is the second time we have
+added this particular sample to the new
+collection of samples we then continue
+to pick random numbers and add samples
+to the new collection until the new
+collection is the same size as the
+original
+ultimately this sample was added to the
+new collection of samples four times
+reflecting its larger sample weight
+now we get rid of the original samples
+and use the new collection of samples
+lastly we give all of the samples equal
+sample ways just like before
+however that doesn't mean the next stump
+will not emphasize the need to correctly
+classify these samples because these
+samples are all the same they will be
+treated as a block creating a large
+penalty for being misclassified
+now we go back to the beginning and try
+to find the stump that does the best job
+classifying the new collection of
+samples
+so that is how the errors that the first
+tree makes influence how the second tree
+is made and how the errors that the
+second tree makes influence how the
+third tree is made etc etc etc double
+bam
+Using stumps to make classifications
+now we need to talk about how a forest
+of stumps created by adaboost makes
+classifications imagine that these
+stumps classified a patient as has heart
+disease and these stumps classified the
+patient as does not have heart disease
+these are the amounts of say for these
+stumps and these are the amounts of say
+for these stumps
+now we add up the amounts of say for
+this group of stumps and for this group
+of stumps
+ultimately the patient is classified as
+has heart disease because this is the
+larger sum
+triple bam
+Review of the three main ideas behind AdaBoost
+to review the three ideas behind
+adaboost our one adaboost combines a lot
+of weak learners to make classifications
+the weak learners are almost always
+stumps to some stumps get more say in
+the classification than others and three
+each stump is made by taking the
+previous stumps mistakes into account if
+we have a way to Gini function then we
+use it with the sample weights otherwise
+we use the sample weights to make a new
+dataset that reflects those weights
+hooray we've made it to the end of
+another exciting stack quest if you like
+this stack quest and want to see more
+please subscribe and if you want to
+support stack quest well consider buying
+a t-shirt or a hoodie or buying one or
+two of my original songs the links to do
+this are in the description below
+alright until next time quest on

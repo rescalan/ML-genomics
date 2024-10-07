@@ -1,0 +1,327 @@
+Awesome song and introduction
+smelly stat smelly stat how are they
+training you I hope they're using stat
+quest hello I'm Josh stormer and welcome
+to stat quest today we're going to talk
+about how to prune regression trees
+there are several methods for pruning
+regression trees the one we'll talk
+about in this quest is called cost
+complexity pruning aka weakest link
+pruning we'll start by giving a general
+overview of how cost complexity pruning
+works and then will describe how it's
+used to build regression trees note this
+stat quest assumes that you are already
+familiar with regression trees if not
+check out the quest the link is in the
+description below also note this stat
+quest assumes that you are already
+familiar with cross-validation if not
+check out the quest
+Motivation for pruning a tree
+in the stack quest on regression trees
+we had this data given different drug
+dosages on the x-axis we measured the
+drug effectiveness on the y-axis
+when the drug dosage was too low or too
+high the drug was not effective
+medium dosages were very effective and
+moderately high dosages were moderately
+effective we then fit a regression tree
+to the data and each leaf correspond to
+the average drug effectiveness from a
+different cluster of observations
+this tree does a pretty good job
+reflecting the training data because
+each leaf represents a value that is
+close to the data
+however what if these red circles were
+testing data
+these three observations are pretty
+close to the predicted values so their
+residuals the difference between the
+observed and predicted values are not
+very large
+similarly the residuals for these
+observations in the testing data are
+relatively small
+however the residuals for these
+observations are larger than before and
+the residuals for these observations are
+much larger these four observations from
+the training data with 100% drug
+effectiveness now look a little bit like
+outliers and that means that we over fit
+the regression tree to the training data
+one way to prevent over-fitting a
+regression tree to the training data is
+to remove some of the leaves and replace
+the split with a leaf that is the
+average of a larger number of
+observations
+now all of the observations between 14.5
+and 29 go to the leaf on the far right
+the large residuals tell us that the
+Nutri doesn't fit the training data as
+well as before but the new subtree does
+a much better job with the testing data
+thus the main idea behind pruning a
+regression tree is to prevent
+overfitting the training data so that
+the tree will do a better job with the
+testing data BAM
+note if we wanted to prune the tree more
+we could remove these two leaves and
+replace the split with a leaf that is
+the average of a larger number of
+observations and we could then remove
+these two leaves and replace the split
+with a leaf that is the average of all
+of the observations
+Calculating the sum of squared residuals for pruned trees
+so the question is how do we decide
+which tree to use
+in this stat quest we will answer that
+question with cost complexity pruning
+the first step in cost complexity
+pruning is to calculate the sum of the
+squared residuals for each tree
+in this example we'll start with the
+original full-sized tree
+here is the original full-sized tree
+some of the squared residuals for the
+observations with dosages less than 14.5
+is d tu tutitu tutitu tu tu 320 point 8
+so we'll save that sum of squared
+residuals underneath the corresponding
+leaf
+some of squared residuals for
+observations with dosages greater than
+or equal to 29 is 75
+some of squared residuals for
+observations with dosages greater than
+or equal to 23 in less than 29 is 140
+8.8 in the sum of squared residuals for
+observations with dosages greater than
+or equal to 14.5 in less than twenty
+three point five is zero thus the total
+sum of squared residuals for the whole
+tree is 320 plus seventy five plus one
+hundred forty eight point eight plus
+zero equals five hundred forty three
+point eight so let's put SSR equals five
+hundred forty three point eight on top
+of the original full-sized tree now
+let's calculate the sum of squared
+residuals for the subtree with one fewer
+leaf going back to the data
+some of squared residuals for when
+dosage is less than 14.5 is the same as
+before and it's the same for when dosage
+is greater than or equal to 29
+but we have to calculate a new sum of
+squared residuals for when the dosage is
+between 14.5 and 29
+thus the total sum of squared residuals
+for this tree is three hundred twenty
+plus seventy five plus five thousand
+ninety nine point eight which equals
+five thousand four hundred ninety four
+point eight
+so let's put SSR equals five thousand
+four hundred ninety four point eight on
+top of the sub tree with three leaves
+similarly the sum of squared residuals
+for the subtree with two leaves is
+nineteen thousand two hundred forty
+three point seven so we put SSR equals
+nineteen thousand two hundred forty
+three point seven on top of the subtree
+with two leaves
+lastly the sum of squared residuals for
+the subtree with only one leaf is twenty
+eight thousand eight hundred ninety
+seven point two so let's put SSR equals
+twenty eight thousand eight hundred
+ninety seven point two on top of the sub
+tree with one leaf note the sum of
+squared residuals is relatively small
+for the original full-size tree
+but each time we remove a leaf the sum
+of squared residuals gets larger and
+larger
+however we knew that was going to happen
+because the whole idea was for the
+pruned trees to not fit the training
+data as well as the full sized tree
+so how do we compare these trees
+Comparing pruned trees with alpha.
+weakest link pruning works by
+calculating a tree score that is based
+on the sum of squared residuals for the
+tree or subtree and a tree complexity
+penalty that is a function of the number
+of leaves or terminal nodes in the tree
+or subtree
+the tree complexity penalty compensates
+for the difference in the number of
+leaves
+note alpha is a tuning parameter that we
+find using cross-validation and we'll
+talk more about it in a bit for now
+let's let alpha equal 10,000
+now let's calculate the tree score for
+each tree the tree score for the
+original full-sized tree is the total
+SSR for the tree which is five hundred
+forty three point eight plus ten
+thousand times T the total number of
+leaves which is four
+so the tree score for the original
+full-size tree is forty thousand five
+hundred forty three point eight
+now let's save the tree score below the
+tree and calculate the tree score for
+the subtree with one fewer leaf
+the sum of squared residuals for this
+subtree is five thousand four hundred
+ninety four point eight
+and since there are three leaves T
+equals three and the total tree score
+equals thirty-five thousand four hundred
+ninety four point eight
+the tree score for the subtree with two
+leaves is be
+boo-boo-boo-boo-boo-boo-boop thirty-nine
+thousand two hundred forty three point
+seven
+lastly the tree score for the subtree
+with only one leaf is EP boopy boopy
+boopy boopy 38 thousand eight hundred
+ninety seven point two
+note because alpha equals 10,000 the
+tree complexity penalty for the tree
+with one leaf was 10,000 and the tree
+complexity penalty for the tree with two
+leaves was 20,000 and the tree
+complexity penalty for the tree with
+three leaves was 30,000 and the tree
+complexity penalty for the original full
+size tree with four leaves was 40,000
+thus the more leaves the larger the
+penalty
+of calculated tree scores for all of the
+trees
+we pick this subtree because it has the
+lowest tree score double bam
+note if we set alpha equals 22,000 and
+calculate the tree scores
+we would use the subtree with only one
+leaf because it has the lowest tree
+score
+thus the value for alpha makes a
+difference in our choice of subtree
+so let's talk about how to build a
+pruned regression tree and how to find
+the best value for alpha first using all
+Step 1: Use all of the data to build trees with different alphas
+of the data build a full sized
+regression tree note this full size tree
+is different than before because it was
+fit to all of the data not just the
+training data
+also note this full-size tree has the
+lowest tree score when alpha equals zero
+this is because when alpha equals zero
+the tree complexity penalty becomes zero
+and the tree score is just the sum of
+the squared residuals and as we saw
+earlier all of the sub trees will have
+larger sum of squared residuals
+so let's put alpha equals zero here to
+remind us that this tree has the lowest
+tree score when alpha equals zero now we
+will increase alpha until pruning leaves
+will give us a lower tree score
+in this case when alpha equals 10,000
+we'll get a lower tree score if we
+remove these leaves and use this sub
+tree now we increase alpha again until
+pruning leaves will give us a lower tree
+score in this case when alpha equals
+15,000 we will get a lower tree score if
+we remove these leaves and use this sub
+tree instead
+and when alpha equals 22,000 we will get
+a lower tree score if we remove these
+leaves and use this subtree instead
+in the end different values for alpha
+give us a sequence of trees from full
+sized to just a leaf
+Step 2: Use cross validation to compare alphas
+now go back to the full data set and
+divided into training and testing data
+sets
+and just using the training data use the
+Alpha values we found before to build a
+full tree and a sequence of sub trees
+that minimize the tree score
+in other words when alpha equals zero we
+build a full-sized tree since it will
+have the lowest tree score however when
+alpha equals 10,000 we will get a lower
+tree score if we prune these leaves and
+use this tree instead
+and when alpha equals 15,000 we will get
+a lower tree score if we prune these
+leaves and use this tree instead
+lastly when alpha equals 22,000 we will
+get a lower tree score if we prune these
+two leaves and use this tree instead
+now calculate the sum of squared
+residuals for each new tree using only
+the testing data
+in this case the tree with alpha equals
+10,000 had the smallest sum of squared
+residuals for the testing data
+now we go back and create new training
+data and a new testing data
+just using the new training data build a
+new sequence of trees from full sized to
+a leaf using the Alpha values we found
+before
+then we calculate the sum of squared
+residuals using the new testing data
+this time the tree with alpha equals
+zero had the lowest sum of squared
+residuals
+now we just keep repeating until we have
+done 10-fold cross-validation and the
+Step 3: Select the alpha that, on average, gives the best results
+value for alpha that on average gave us
+the lowest sum of squared residuals with
+the testing data is the final value for
+alpha
+in this case the optimal trees built
+with alpha equals 10,000 had on average
+the lowest sum of squared residuals so
+alpha equals 10,000 is our final value
+Step 4: Select the original tree that corresponds to that alpha
+lastly we go back to the original trees
+and sub trees made from the full data
+and pick the tree that corresponds to
+the value for alpha that we selected
+sub-tree will be the final pruned tree
+triple bam
+hooray we've made it to the end of
+another exciting stat quest if you like
+this stat quest and want to see more
+please subscribe and if you want to
+support stack quest consider
+contributing to my patreon campaign
+becoming a channel member buying one or
+two of my original songs or a t-shirt or
+a hoodie or just donate the links are in
+the description below alright until next
+time quest on
