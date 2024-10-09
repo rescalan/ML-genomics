@@ -1,0 +1,82 @@
+---
+title: "Logistic Regression with Tidymodels: Titanic Dataset"
+author: "Renan Escalante"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+# Logistic Regression using Tidymodels: Titanic Dataset
+
+This document demonstrates how to perform logistic regression using the tidymodels framework in R, using the Titanic dataset as an example.
+
+## Setup
+
+First, let's load the necessary libraries:
+
+```{r setup, message=FALSE, warning=FALSE}
+library(tidymodels)
+library(tidyverse)
+library(here)
+```
+
+```{r}
+raw_train <- here::here("class_5_logistic_regression/homework_5/train.csv") %>% read_csv()
+raw_test <- here::here("class_5_logistic_regression/homework_5/test.csv") %>% read_csv()
+```
+
+
+
+
+```{r}
+uniqx <- unique(na.omit(raw_train$Embarked))
+mode_embarked <- as.character(fct_drop(uniqx[which.max(tabulate(match(raw_train$Embarked, uniqx)))]))
+
+```
+
+```{r}
+process_data <- function(tbl){
+tbl %>%
+mutate(class = case_when(Pclass == 1 ~ "first",
+Pclass == 2 ~ "second",
+Pclass == 3 ~ "third"),
+class = as_factor(class),
+gender = factor(Sex),
+fare = Fare,
+age = Age,
+ticket = Ticket,
+alone = if_else(SibSp + Parch == 0, "yes", "no"), # alone variable
+alone = as_factor(alone),
+port = factor(Embarked), # rename embarked as port
+title = str_extract(Name, "[A-Za-z]+\\."), # title variable
+title = fct_lump(title, 4)) %>% # keep only most frequent levels of title
+mutate(port = ifelse(is.na(port), mode_embarked, port), # deal w/ NAs in port (replace by mode)
+port = as_factor(port)) %>%
+group_by(title) %>%
+mutate(median_age_title = median(age, na.rm = T)) %>%
+ungroup() %>%
+mutate(age = if_else(is.na(age), median_age_title, age)) %>% # deal w/ NAs in age (replace by median in title)
+mutate(ticketfreq = ave(1:nrow(.), FUN = length),
+fareadjusted = fare / ticketfreq) %>%
+mutate(familyage = SibSp + Parch + 1 + age/70)
+}
+```
+
+```{r}
+train <- process_data(raw_train) %>% 
+  janitor::clean_names() %>% 
+  dplyr::mutate(survived = as.factor(survived))
+
+test_df <- process_data(raw_test) %>% 
+  janitor::clean_names()
+```
+
+```{r}
+train %>% write_csv(here::here("class_5_logistic_regression/homework_5/titanic_train.csv"))
+test_df %>% write_csv(here::here("class_5_logistic_regression/homework_5/titanic_test.csv"))
+```
+
+
+
+
+
+

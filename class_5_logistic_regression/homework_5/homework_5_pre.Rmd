@@ -1,0 +1,115 @@
+---
+title: "Untitled"
+output: html_document
+date: "2024-10-09"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(tidymodels)
+```
+
+# Logistic regression
+
+```{r}
+train  <- read_csv(here::here("class_5_logistic_regression/homework_5/titanic_train.csv")) %>% 
+  dplyr::mutate(survived = ifelse(survived == 0 , "no", "yes")) %>% 
+  dplyr::mutate(survived = as.factor(survived)) %>% 
+  dplyr::select(-name, -starts_with("ticket")) %>% 
+  dplyr::select(-cabin)
+
+test_df <-  read_csv(here::here("class_5_logistic_regression/homework_5/titanic_test.csv")) %>% 
+  dplyr::select(-name, -starts_with("ticket")) %>% 
+  dplyr::select(-cabin)
+```
+```{r}
+library(DataExplorer)
+plot_missing(train)
+```
+
+
+```{r}
+en_rec <- recipe(survived ~ ., data = train) %>%
+step_impute_median(all_numeric()) %>% # replace missing value by median in age
+step_normalize(all_numeric_predictors()) %>% # normalize
+  # step_unknown(cabin, new_level = "unknown_cabin") %>%
+  step_unknown(embarked, new_level = "unknown_embark") %>%
+step_dummy(all_nominal_predictors()) %>% 
+  step_zv(all_predictors()) %>% 
+  step_nzv(all_predictors())
+```
+
+```{r}
+en_model <- logistic_reg(penalty = tune(),
+mixture = tune()) %>% # param to be tuned
+set_engine("glmnet") %>% # elastic net
+set_mode("classification") # binary response
+```
+
+```{r}
+en_wf <-
+workflow() %>%
+add_model(en_model) %>%
+add_recipe(en_rec)
+```
+
+```{r}
+mset <- metric_set(accuracy) # metric is accuracy
+control <- control_grid(save_workflow = TRUE,
+save_pred = TRUE,
+extract = extract_fit_engine) # grid for tuning
+```
+
+```{r}
+train_5fold <- train %>%
+vfold_cv(5)
+```
+
+
+```{r}
+en_tune <- en_wf %>%
+tune_grid(train_5fold,
+metrics = mset,
+control = control,
+grid = crossing(penalty = 10 ^ seq(-8, -.5, .5),
+mixture = seq(0, 1, length.out = 10)))
+```
+
+
+```{r}
+autoplot(en_tune)
+```
+
+```{r}
+en_tune %>%
+collect_metrics() %>%
+arrange(desc(mean))
+
+```
+
+```{r}
+en_fit <- en_wf %>%
+finalize_workflow(select_best(en_tune)) %>%
+fit(train)
+```
+
+```{r}
+en_fit %>%
+augment(test_df, type.predict = "response") %>%
+accuracy(survived, .pred_class)
+```
+
+```{r}
+library(broom)
+en_fit$fit$fit$fit %>%
+tidy() %>%
+filter(lambda >= select_best(en_tune)$penalty) %>%
+filter(lambda == min(lambda),
+term != "(Intercept)") %>%
+mutate(term = fct_reorder(term, estimate)) %>%
+ggplot(aes(estimate, term, fill = estimate > 0)) +
+geom_col() +
+theme(legend.position = "none")
+```
+
