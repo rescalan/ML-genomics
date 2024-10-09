@@ -1,5 +1,5 @@
 ---
-title: "Class 4 - ML in genomics: Regularization Loss Functions"
+title: "Class 5 - ML in genomics: Regularization Loss Functions"
 author: "Renan Escalante"
 date: "`r Sys.Date()`"
 output: 
