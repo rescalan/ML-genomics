@@ -1,0 +1,93 @@
+---
+title: "Class 4 - ML in genomics: Regularization Loss Functions"
+author: "Renan Escalante"
+date: "`r Sys.Date()`"
+output: 
+  ioslides_presentation:
+    widescreen: true
+    smaller: true
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+library(tidyverse)
+library(knitr)
+library(kableExtra)
+```
+
+## Ordinary Least Squares (OLS) Loss Function
+
+The standard linear regression loss function (Residual Sum of Squares):
+
+$$
+L_{OLS}(\beta) = \sum_{i=1}^n (y_i - x_i^T\beta)^2
+$$
+
+Where:
+- $y_i$ is the observed value
+- $x_i$ is the vector of predictors
+- $\beta$ is the vector of coefficients
+
+## Ridge Regression Loss Function
+
+Ridge regression adds an L2 penalty term to the OLS loss function:
+
+$$
+L_{Ridge}(\beta) = \sum_{i=1}^n (y_i - x_i^T\beta)^2 + \lambda \sum_{j=1}^p \beta_j^2
+$$
+
+Where:
+- $\lambda$ is the regularization parameter
+- $p$ is the number of predictors
+
+## Elastic Net Loss Function
+
+Elastic Net combines both L1 (Lasso) and L2 (Ridge) penalties:
+
+$$
+L_{ElasticNet}(\beta) = \sum_{i=1}^n (y_i - x_i^T\beta)^2 + \lambda \left( \alpha \sum_{j=1}^p |\beta_j| + (1-\alpha) \sum_{j=1}^p \beta_j^2 \right)
+$$
+
+Where:
+- $\lambda$ is the regularization parameter
+- $\alpha$ is the mixing parameter (0 ≤ α ≤ 1)
+  - α = 1: Lasso regression
+  - α = 0: Ridge regression
+  - 0 < α < 1: Elastic Net
+
+## Comparison of Regularization Methods
+
+```{r, fig.width=8, fig.height=4}
+library(ggplot2)
+
+# Generate data
+x <- seq(-2, 2, length.out = 100)
+y_ols <- x^2
+y_ridge <- x^2 + 0.5
+y_lasso <- abs(x)
+y_elastic <- 0.5 * abs(x) + 0.5 * x^2
+
+# Create data frame
+df <- data.frame(
+  x = rep(x, 4),
+  y = c(y_ols, y_ridge, y_lasso, y_elastic),
+  Method = factor(rep(c("OLS", "Ridge", "Lasso", "Elastic Net"), each = 100))
+)
+
+# Plot
+ggplot(df, aes(x = x, y = y, color = Method)) +
+  geom_line(size = 1) +
+  theme_minimal() +
+  labs(title = "Comparison of Regularization Methods",
+       x = "Coefficient",
+       y = "Penalty") +
+  theme(legend.position = "bottom")
+```
+
+## Key Points
+
+- **OLS**: No regularization, can lead to overfitting
+- **Ridge**: Shrinks coefficients towards zero, but doesn't eliminate any
+- **Lasso**: Can shrink coefficients to exactly zero, performing feature selection
+- **Elastic Net**: Combines advantages of Ridge and Lasso
+  - Useful when there are correlated predictors
