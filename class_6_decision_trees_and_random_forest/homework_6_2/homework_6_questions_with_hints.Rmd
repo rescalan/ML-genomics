@@ -1,0 +1,266 @@
+---
+title: "Homework 6 - ML in genomics: Penguin Classification and Regression with Decision Trees and Random Forests"
+author: "Renan Escalante"
+date: "2024-10-17"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE, eval=FALSE)
+```
+
+## Introduction
+
+In this homework, we'll build both classification and regression models using decision trees and random forests to analyze the Palmer Penguins dataset. We'll predict penguin species (classification) and body mass (regression) using the tidymodels framework.
+
+## Setup
+
+Load the required libraries:
+
+```{r}
+library(tidyverse)
+library(tidymodels)
+library(palmerpenguins)
+library(vip)
+```
+
+## Part 1: Classification
+
+### Data Understanding
+
+1. Load the penguins dataset using `data(penguins)` and display the first few rows using the `head()` function. What are the features and the target variable for classification?
+
+```{r}
+# Your code here
+```
+
+2. Create a summary of the dataset using `skimr::skim()`. What insights can you gain about the features?
+
+```{r}
+# Your code here
+```
+
+3. Visualize the relationships between features using `GGally::ggpairs()`. What patterns do you notice? 
+
+Hint: Use `aes(color = species)` inside `ggpairs()` to color-code by species.
+
+```{r}
+# Your code here
+```
+
+### Data Preparation
+
+4. Remove any rows with missing values from the dataset using `drop_na()`.
+
+```{r}
+penguins_clean <- penguins %>% 
+  # Your code here
+```
+
+5. Split the data into training and testing sets using `initial_split()`. Use 75% of the data for training and stratify by the species.
+
+Hint: Use `set.seed()` for reproducibility.
+
+```{r}
+set.seed(123)
+penguins_split <- initial_split(penguins_clean, 
+                                # Your code here
+                                )
+
+penguins_train <- training(penguins_split)
+penguins_test <- testing(penguins_split)
+```
+
+6. Create a recipe for data preprocessing for classification. Include the following steps:
+   - Normalize all numeric predictors
+   - Convert categorical predictors to dummy variables
+   - Remove any zero variance predictors
+
+Hint: Use `recipe()`, `step_normalize()`, `step_dummy()`, and `step_zv()`.
+
+```{r}
+penguins_recipe <- recipe(species ~ ., data = penguins_train) %>%
+  # Your code here
+```
+
+7. Create a validation set using k-fold cross-validation with 5 folds.
+
+Hint: Use `vfold_cv()` and set a seed for reproducibility.
+
+```{r}
+set.seed(234)
+penguins_folds <- vfold_cv(
+  # Your code here
+)
+```
+
+### Model Building (Classification)
+
+8. Specify a decision tree model and a random forest model for classification. Set the mode to "classification" for both.
+
+Hint: Use `decision_tree()` and `rand_forest()` from parsnip.
+
+```{r}
+dt_spec <- decision_tree() %>%
+  # Your code here
+
+rf_spec <- rand_forest() %>%
+  # Your code here
+```
+
+9. Create workflows for both classification models, combining the recipe with each model specification.
+
+Hint: Use `workflow()`, `add_recipe()`, and `add_model()`.
+
+```{r}
+dt_wflow <- workflow() %>%
+  # Your code here
+
+rf_wflow <- workflow() %>%
+  # Your code here
+```
+
+10. Fit the classification models to the resamples and collect the performance metrics. Use the following metrics: accuracy, ROC AUC, and Kappa.
+
+Hint: Use `fit_resamples()` with `metric_set()` and `control_resamples()`.
+
+```{r}
+dt_res <- dt_wflow %>%
+  fit_resamples(
+    resamples = penguins_folds,
+    metrics = metric_set(
+      # Your code here
+    ),
+    control = control_resamples(save_pred = TRUE)
+  )
+
+rf_res <- rf_wflow %>%
+  # Your code here
+```
+
+### Model Evaluation (Classification)
+
+11. Compare the performance of the decision tree and random forest classification models using the collected metrics. Which model performs better?
+
+Hint: Use `collect_metrics()` and `bind_rows()` to combine results.
+
+```{r}
+# Your code here
+```
+
+12. Create a variable importance plot for the random forest classification model. Which features are most important for predicting penguin species?
+
+Hint: Fit the model to the training data, then use `pull_workflow_fit()` and `vip()`.
+
+```{r}
+rf_wflow %>%
+  fit(penguins_train) %>%
+  pull_workflow_fit() %>%
+  vip(geom = "col")
+```
+
+13. Fit the best performing classification model to the entire training set and evaluate it on the test set using `last_fit()`. How does the performance on the test set compare to the cross-validated performance?
+
+```{r}
+# Your code here
+```
+
+14. Create a confusion matrix for the classification predictions on the test set. What insights can you gain about the model's performance for each penguin species?
+
+Hint: Use `collect_predictions()`, `conf_mat()`, and `autoplot()`.
+
+```{r}
+# Your code here
+```
+
+## Part 2: Regression
+
+### Data Preparation (Regression)
+
+15. Create a new recipe for regression, using body_mass_g as the target variable. Include similar preprocessing steps as in the classification recipe.
+
+```{r}
+penguins_reg_recipe <- recipe(body_mass_g ~ ., data = penguins_train) %>%
+  # Your code here
+```
+
+16. Create a new validation set for regression using k-fold cross-validation with 5 folds.
+
+```{r}
+set.seed(345)
+penguins_reg_folds <- vfold_cv(
+  # Your code here
+)
+```
+
+### Model Building (Regression)
+
+17. Specify a regression tree model using `decision_tree()` and a random forest model using `rand_forest()`. Set the mode to "regression" for both.
+
+```{r}
+dt_reg_spec <- decision_tree() %>%
+  # Your code here
+
+rf_reg_spec <- rand_forest() %>%
+  # Your code here
+```
+
+18. Create workflows for both regression models, combining the regression recipe with each model specification.
+
+```{r}
+dt_reg_wflow <- workflow() %>%
+  # Your code here
+
+rf_reg_wflow <- workflow() %>%
+  # Your code here
+```
+
+19. Fit the regression models to the resamples and collect the performance metrics. Use the following metrics: RMSE, R-squared, and MAE.
+
+```{r}
+dt_reg_res <- dt_reg_wflow %>%
+  fit_resamples(
+    resamples = penguins_reg_folds,
+    metrics = metric_set(
+      # Your code here
+    ),
+    control = control_resamples(save_pred = TRUE)
+  )
+
+rf_reg_res <- rf_reg_wflow %>%
+  # Your code here
+```
+
+### Model Evaluation (Regression)
+
+20. Compare the performance of the regression tree and random forest regression models using the collected metrics. Which model performs better?
+
+```{r}
+# Your code here
+```
+
+21. Create a variable importance plot for the random forest regression model. Which features are most important for predicting penguin body mass?
+
+```{r}
+# Your code here
+```
+
+22. Fit the best performing regression model to the entire training set and evaluate it on the test set using `last_fit()`. How does the performance on the test set compare to the cross-validated performance?
+
+```{r}
+# Your code here
+```
+
+23. Create a scatter plot of predicted vs. actual body mass values for the test set. What does this plot tell you about the model's performance?
+
+Hint: Use `collect_predictions()` and `ggplot()`.
+
+```{r}
+# Your code here
+```
+
+## Conclusion
+
+24. Summarize your findings for both the classification and regression tasks. Discuss the strengths and limitations of using decision trees and random forests for these tasks, and compare their performance in classification vs. regression.
+
+Your answer here:

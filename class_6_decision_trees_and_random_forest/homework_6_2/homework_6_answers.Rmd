@@ -1,0 +1,334 @@
+---
+title: "Homework 6 - ML in genomics: Penguin Classification and Regression with Decision Trees and Random Forests (Answers)"
+author: "Renan Escalante"
+date: "2024-10-17"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE)
+```
+
+## Setup
+
+Load the required libraries:
+
+```{r}
+library(tidyverse)
+library(tidymodels)
+library(palmerpenguins)
+library(vip)
+```
+
+## Part 1: Classification
+
+### Data Understanding
+
+1. Load the penguins dataset and display the first few rows:
+
+```{r}
+data(penguins)
+head(penguins)
+```
+
+The features for classification are island, bill_length_mm, bill_depth_mm, flipper_length_mm, body_mass_g, and sex. The target variable is species.
+
+2. Create a summary of the dataset:
+
+```{r}
+skimr::skim(penguins)
+```
+
+Insights:
+- There are missing values in some variables
+- Numeric features have different scales
+- The species variable has 3 levels with different frequencies
+
+3. Visualize the relationships between features:
+
+```{r}
+GGally::ggpairs(penguins, aes(color = species, alpha = 0.5))
+```
+
+Patterns:
+- Bill length and depth show some separation between species
+- Gentoo penguins are generally larger (higher body mass and flipper length)
+- There's some overlap between Adelie and Chinstrap penguins
+
+### Data Preparation
+
+4. Remove rows with missing values:
+
+```{r}
+penguins_clean <- penguins %>% drop_na()
+```
+
+5. Split the data into training and testing sets:
+
+```{r}
+set.seed(123)
+penguins_split <- initial_split(penguins_clean, prop = 0.75, strata = species)
+penguins_train <- training(penguins_split)
+penguins_test <- testing(penguins_split)
+```
+
+6. Create a recipe for classification:
+
+```{r}
+penguins_recipe <- recipe(species ~ ., data = penguins_train) %>%
+  step_normalize(all_numeric_predictors()) %>%
+  step_dummy(all_nominal_predictors()) %>%
+  step_zv(all_predictors())
+
+penguins_recipe
+```
+
+7. Create a validation set:
+
+```{r}
+set.seed(234)
+penguins_folds <- vfold_cv(penguins_train, v = 5, strata = species)
+```
+
+### Model Building (Classification)
+
+8. Specify classification models:
+
+```{r}
+dt_spec <- decision_tree() %>%
+  set_engine("rpart") %>%
+  set_mode("classification")
+
+rf_spec <- rand_forest() %>%
+  set_engine("ranger", importance = "impurity") %>%
+  set_mode("classification")
+```
+
+9. Create workflows for classification:
+
+```{r}
+dt_wflow <- workflow() %>%
+  add_recipe(penguins_recipe) %>%
+  add_model(dt_spec)
+
+rf_wflow <- workflow() %>%
+  add_recipe(penguins_recipe) %>%
+  add_model(rf_spec)
+```
+
+10. Fit classification models and collect metrics:
+
+```{r}
+dt_res <- dt_wflow %>%
+  fit_resamples(
+    resamples = penguins_folds,
+    metrics = metric_set(accuracy, roc_auc, kap),
+    control = control_resamples(save_pred = TRUE)
+  )
+
+rf_res <- rf_wflow %>%
+  fit_resamples(
+    resamples = penguins_folds,
+    metrics = metric_set(accuracy, roc_auc, kap),
+    control = control_resamples(save_pred = TRUE)
+  )
+```
+
+### Model Evaluation (Classification)
+
+11. Compare classification model performance:
+
+```{r}
+bind_rows(
+  dt_res %>% collect_metrics() %>% mutate(model = "Decision Tree"),
+  rf_res %>% collect_metrics() %>% mutate(model = "Random Forest")
+) %>%
+  pivot_wider(names_from = .metric, values_from = mean) %>%
+  arrange(desc(accuracy))
+```
+
+The random forest model performs better across all metrics for classification.
+
+12. Create a variable importance plot for the random forest classification model:
+
+```{r}
+rf_wflow %>%
+  fit(penguins_train) %>%
+  pull_workflow_fit() %>%
+  vip(geom = "col")
+```
+
+Bill length, flipper length, and bill depth are the most important features for predicting penguin species.
+
+13. Fit the best classification model (random forest) to the entire training set and evaluate on the test set:
+
+```{r}
+rf_final <- rf_wflow %>%
+  last_fit(penguins_split)
+
+rf_final %>% collect_metrics()
+```
+
+The performance on the test set is similar to the cross-validated performance, indicating good generalization for classification.
+
+14. Create a confusion matrix for classification:
+
+```{r}
+rf_final %>%
+  collect_predictions() %>%
+  conf_mat(truth = species, estimate = .pred_class) %>%
+  autoplot(type = "heatmap")
+```
+
+Insights:
+- The model performs well for all three species
+- There's some confusion between Adelie and Chinstrap penguins
+- Gentoo penguins are classified with high accuracy
+
+## Part 2: Regression
+
+### Data Preparation (Regression)
+
+15. Create a new recipe for regression:
+
+```{r}
+penguins_reg_recipe <- recipe(body_mass_g ~ ., data = penguins_train) %>%
+  step_normalize(all_numeric_predictors()) %>%
+  step_dummy(all_nominal_predictors()) %>%
+  step_zv(all_predictors())
+
+penguins_reg_recipe
+```
+
+16. Create a new validation set for regression:
+
+```{r}
+set.seed(345)
+penguins_reg_folds <- vfold_cv(penguins_train, v = 5)
+```
+
+### Model Building (Regression)
+
+17. Specify regression models:
+
+```{r}
+dt_reg_spec <- decision_tree() %>%
+  set_engine("rpart") %>%
+  set_mode("regression")
+
+rf_reg_spec <- rand_forest() %>%
+  set_engine("ranger", importance = "impurity") %>%
+  set_mode("regression")
+```
+
+18. Create workflows for regression:
+
+```{r}
+dt_reg_wflow <- workflow() %>%
+  add_recipe(penguins_reg_recipe) %>%
+  add_model(dt_reg_spec)
+
+rf_reg_wflow <- workflow() %>%
+  add_recipe(penguins_reg_recipe) %>%
+  add_model(rf_reg_spec)
+```
+
+19. Fit regression models and collect metrics:
+
+```{r}
+dt_reg_res <- dt_reg_wflow %>%
+  fit_resamples(
+    resamples = penguins_reg_folds,
+    metrics = metric_set(rmse, rsq, mae),
+    control = control_resamples(save_pred = TRUE)
+  )
+
+rf_reg_res <- rf_reg_wflow %>%
+  fit_resamples(
+    resamples = penguins_reg_folds,
+    metrics = metric_set(rmse, rsq, mae),
+    control = control_resamples(save_pred = TRUE)
+  )
+```
+
+### Model Evaluation (Regression)
+
+20. Compare regression model performance:
+
+```{r}
+bind_rows(
+  dt_reg_res %>% collect_metrics() %>% mutate(model = "Regression Tree"),
+  rf_reg_res %>% collect_metrics() %>% mutate(model = "Random Forest")
+) %>%
+  pivot_wider(names_from = .metric, values_from = mean) %>%
+  arrange(rmse)
+```
+
+The random forest model performs better across all metrics for regression.
+
+21. Create a variable importance plot for the random forest regression model:
+
+```{r}
+rf_reg_wflow %>%
+  fit(penguins_train) %>%
+  pull_workflow_fit() %>%
+  vip(geom = "col")
+```
+
+Flipper length, bill length, and species are the most important features for predicting penguin body mass.
+
+22. Fit the best regression model (random forest) to the entire training set and evaluate on the test set:
+
+```{r}
+rf_reg_final <- rf_reg_wflow %>%
+  last_fit(penguins_split)
+
+rf_reg_final %>% collect_metrics()
+```
+
+The performance on the test set is similar to the cross-validated performance, indicating good generalization for regression.
+
+23. Create a scatter plot of predicted vs. actual body mass values:
+
+```{r}
+rf_reg_final %>%
+  collect_predictions() %>%
+  ggplot(aes(x = body_mass_g, y = .pred)) +
+  geom_point(alpha = 0.5) +
+  geom_abline(color = "red", linetype = "dashed") +
+  labs(x = "Actual Body Mass (g)", y = "Predicted Body Mass (g)",
+       title = "Predicted vs. Actual Body Mass")
+```
+
+This plot shows that the model's predictions are generally close to the actual values, with some scatter around the diagonal line. The model seems to perform well across the range of body mass values.
+
+## Conclusion
+
+24. Summary of findings:
+
+Classification:
+- Random forest outperformed decision trees in classifying penguin species
+- Bill length, flipper length, and bill depth were the most important features
+- The models achieved high accuracy, with some confusion between Adelie and Chinstrap penguins
+
+Regression:
+- Random forest also outperformed regression trees in predicting penguin body mass
+- Flipper length, bill length, and species were the most important features
+- The models achieved good R-squared values, indicating strong predictive power
+
+Strengths of decision trees and random forests:
+- Handle both numeric and categorical data well
+- Capture non-linear relationships
+- Provide feature importance rankings
+
+Limitations:
+- Decision trees can be unstable and prone to overfitting
+- Random forests may be computationally intensive for large datasets
+- Less interpretable than single decision trees (for random forests)
+
+Comparison of classification vs. regression performance:
+- Both tasks showed good performance, with random forests consistently outperforming single decision trees
+- Classification achieved high accuracy, while regression showed strong R-squared values
+- Feature importance rankings were similar but not identical between classification and regression tasks
+
+Overall, decision trees and random forests proved effective for both classification and regression tasks on the Palmer Penguins dataset, providing good performance and valuable insights into feature importance.

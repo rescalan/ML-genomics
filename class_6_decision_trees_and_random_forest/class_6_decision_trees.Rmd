@@ -1,0 +1,417 @@
+---
+title: "Machine Learning in Genomics: Decision Trees, Random Forests, and Boosting"
+author: "Instructor Name"
+date: "2024-10-06"
+output:
+  ioslides_presentation:
+    widescreen: true
+---
+
+## Slide 1: Introduction to Machine Learning in Genomics
+
+- Machine learning is a crucial tool for analyzing complex genomic data.
+- **Applications**:
+  - Identifying disease-causing genes.
+  - Predicting patient outcomes.
+  - Understanding gene expression patterns.
+- We'll focus on **supervised learning** methods: Decision Trees, Random Forests, and Boosting.
+- Implementations will use the `tidymodels` framework in R.
+
+**What to Explain**:
+- Provide an overview of how machine learning techniques are transforming genomics research.
+- Discuss why supervised learning methods are well-suited for problems with labeled datasets in genomics.
+- Introduce the audience to the `tidymodels` framework and its importance in R programming.
+
+
+## Slide 2: Overview of Supervised Learning
+- **Supervised Learning**: Algorithms learn from labeled data.
+  - **Classification**: Predicting discrete labels (e.g., disease vs. healthy).
+  - **Regression**: Predicting continuous values (e.g., gene expression levels).
+- **Popular Algorithms**:
+  - Decision Trees
+  - Random Forests
+  - Gradient Boosting (AdaBoost)
+
+**What to Explain**:
+- Define supervised learning and distinguish between classification and regression.
+- Discuss the significance of classification and regression in genomics.
+- Introduce key algorithms and their use cases in genomics studies.
+
+
+## Slide 3: Introduction to Decision Trees
+- A decision tree is a hierarchical model used to make decisions based on feature splits.
+- Components:
+  - **Root Node**: Starting point of the tree.
+  - **Decision Node**: Points where data is split.
+  - **Leaf Node**: Final outcome or prediction.
+- Use Cases:
+  - Classifying tumor samples as benign or malignant.
+  - Predicting patient survival times based on clinical features.
+
+**What to Explain**:
+- Describe how a decision tree works, starting from the root node and ending at the leaf nodes.
+- Provide a real-world example of decision tree usage in genomics (e.g., predicting cancer subtypes).
+
+
+## Slide 4: Gini Impurity and Entropy
+- **Gini Impurity** measures the probability of incorrect classifications.
+  - Formula: \( G = 1 - \sum p(i)^2 \).
+- **Entropy** measures unpredictability or disorder in a dataset.
+  - Formula: \( H = - \sum p(i) \log(p(i)) \).
+- **Information Gain**: The reduction in entropy after a dataset is split on a feature.
+
+**Example**: Calculate Gini and Entropy for a split with three classes: 50% A, 30% B, 20% C.
+
+**What to Explain**:
+- Define Gini impurity and entropy, and explain their role in determining the best splits in decision trees.
+- Use a simple calculation to demonstrate the concepts.
+
+
+## Slide 5: Building Decision Trees in R
+
+```{r}
+library(tidymodels)
+data("iris")
+
+# Split data into training and testing sets
+set.seed(123)
+iris_split <- initial_split(iris, prop = 0.7)
+iris_train <- training(iris_split)
+iris_test <- testing(iris_split)
+
+# Specify and fit the decision tree model
+dtree_spec <- decision_tree() %>%
+  set_mode("classification") %>%
+  set_engine("rpart")
+
+# Train the model
+dtree_fit <- dtree_spec %>% 
+  fit(Species ~ ., data = iris_train)
+
+# Visualize the tree
+library(rpart.plot)
+rpart.plot::rpart.plot(dtree_fit$fit)
+```
+
+**What to Explain**:
+- Walk through each step: data splitting, model specification, fitting, and visualization.
+- Emphasize the practical workflow using the `tidymodels` framework.
+
+
+## Slide 6: Overfitting and Pruning
+- Overfitting occurs when the model performs well on training data but poorly on new data.
+- Symptoms:
+  - Very low training error but high test error.
+  - Complex and large tree structures.
+- Pruning simplifies the tree by removing branches with little significance.
+  
+```{r}
+# Pruning the tree
+pruned_tree <- prune(dtree_fit$fit, cp = 0.01)
+rpart.plot::rpart.plot(pruned_tree)
+```
+
+**What to Explain**:
+- Define overfitting and its impact on model performance.
+- Demonstrate how pruning can improve generalization.
+- Walk through a pruning example in R.
+
+
+## Slide 7: Introduction to Regression Trees
+- Regression trees predict continuous values by minimizing **Mean Squared Error (MSE)**.
+- Nodes are split based on minimizing prediction errors.
+- Use Cases:
+  - Predicting house prices.
+  - Estimating gene expression levels.
+
+**What to Explain**:
+- Define regression trees and distinguish them from classification trees.
+- Describe the mathematical formulation of MSE.
+
+
+## Slide 8: Building Regression Trees in R
+
+```{r}
+# Specify a regression tree model
+reg_tree_spec <- decision_tree() %>%
+  set_mode("regression") %>%
+  set_engine("rpart")
+
+# Fit the model
+reg_tree_fit <- reg_tree_spec %>%
+  fit(Petal.Length ~ Sepal.Width + Sepal.Length, data = iris_train)
+
+# Visualize the regression tree
+rpart.plot::rpart.plot(reg_tree_fit$fit)
+```
+
+**What to Explain**:
+- Highlight differences in specifying a regression tree model in R.
+- Walk through building and interpreting the regression tree.
+
+
+## Slide 9: Cost Complexity Pruning in Regression Trees
+- **Cost-Complexity Pruning**: Minimizes both error and complexity of the model.
+- Formula: \( R_{\alpha}(T) = R(T) + \alpha \times |T| \).
+
+```{r}
+# Prune the regression tree
+pruned_reg_tree <- prune(reg_tree_fit$fit, cp = 0.02)
+rpart.plot::rpart.plot(pruned_reg_tree)
+```
+
+**What to Explain**:
+- Define cost-complexity pruning and demonstrate its practical use.
+
+
+## **Slide 10: Introduction to Random Forests**
+- **Content**:
+  - **Definition**: Random Forests are an ensemble learning method combining multiple decision trees.
+  - **Key Concepts**:
+    - **Bagging (Bootstrap Aggregating)**:
+      - Random subsets of data (with replacement) are used to train each tree.
+    - **Random Subset of Features**:
+      - Each split only considers a random subset of features.
+    - **Majority Voting**:
+      - For classification, the output is the majority vote of all trees.
+      - For regression, the output is the average of predictions.
+  - **Advantages**:
+    - Reduces overfitting compared to a single decision tree.
+    - Handles large datasets with higher accuracy and stability.
+  - **Applications**: Genomics studies to predict disease outcomes.
+
+- **What to Explain**:
+  - Start by explaining how Random Forests address the limitations of single decision trees, such as overfitting.
+  - Describe the process of building a Random Forest step-by-step: bootstrapping, feature selection, and aggregation.
+  - Provide genomics-specific applications (e.g., predicting the presence of specific genetic variants).
+
+
+## **Slide 11: Building Random Forests in R**
+- **Content**:
+  - Demonstration of how to build a Random Forest using `tidymodels`.
+  - Split the `iris` dataset into training and testing sets.
+  - Specify a random forest model using the `rand_forest()` function.
+  - Fit the model and evaluate its accuracy.
+
+```r
+# Load necessary libraries
+library(tidymodels)
+data("iris")
+
+# Split the data into training and testing sets
+set.seed(123)
+iris_split <- initial_split(iris, prop = 0.7)
+iris_train <- training(iris_split)
+iris_test <- testing(iris_split)
+
+# Specify a random forest model with 500 trees
+rf_spec <- rand_forest(trees = 500, mtry = 2, min_n = 5) %>%
+  set_mode("classification") %>%
+  set_engine("ranger")
+
+# Fit the model to training data
+rf_fit <- rf_spec %>%
+  fit(Species ~ Sepal.Width + Sepal.Length, data = iris_train)
+
+# Print model results
+rf_fit
+```
+
+- **What to Explain**:
+  - Walk through the process of specifying and fitting a random forest in `tidymodels`.
+  - Discuss key hyperparameters such as `trees`, `mtry` (number of features considered), and `min_n` (minimum node size).
+  - Show how to interpret the fitted model.
+
+
+## **Slide 12: Out-of-Bag Error and Cross-Validation**
+- **Content**:
+  - **Out-of-Bag (OOB) Error**:
+    - An unbiased estimate of model performance using samples not included in the bootstrap sample for each tree.
+    - Each tree is trained using a subset, leaving ~1/3 of the data as OOB samples.
+    - OOB Error = Proportion of incorrectly classified OOB samples.
+  - **Cross-Validation**:
+    - Use k-fold cross-validation for parameter tuning.
+    - Cross-validation splits the data into k groups and trains the model k times, using a different group as validation each time.
+
+**Example Code**: Calculate OOB Error for a Random Forest model:
+
+```r
+# Calculate out-of-bag (OOB) error using the randomForest package
+library(randomForest)
+set.seed(123)
+rf_model <- randomForest(Species ~ ., data = iris_train, ntree = 500, mtry = 2)
+print(rf_model)
+```
+
+- **What to Explain**:
+  - Define Out-of-Bag error and why it's a useful metric in Random Forests.
+  - Describe how cross-validation works and its role in selecting optimal hyperparameters.
+  - Compare OOB error with traditional cross-validation metrics.
+
+
+## **Slide 13: Feature Importance in Random Forests**
+
+- **Content**:
+  - **Feature Importance** measures the contribution of each feature to the prediction.
+  - **Methods**:
+    - **Gini Importance**: Measures decrease in Gini Impurity after splitting.
+    - **Permutation Importance**: Measures increase in the error when a feature is randomly shuffled.
+  - **Use Case**: Identifying the most influential genes in a dataset predicting disease outcomes.
+
+**Example Code**: Calculate and plot feature importance for a Random Forest:
+
+```r
+library(vip)
+# Visualize feature importance using the vip package
+vip(rf_fit$fit)
+```
+
+- **What to Explain**:
+  - Describe the different methods for calculating feature importance.
+  - Show how feature importance helps interpret complex models.
+  - Highlight genomics-specific use cases where feature importance can identify key biomarkers.
+
+## **Slide 14: Hyperparameter Tuning in Random Forests**
+
+- **Content**:
+  - Hyperparameters in Random Forests:
+    - `mtry`: Number of features considered at each split.
+    - `ntree`: Number of trees in the forest.
+    - `min_n`: Minimum samples per leaf.
+  - **Tuning Process**:
+    - Use grid search or random search to find optimal values.
+    - Use cross-validation to evaluate each combination.
+  - **Example**: Tuning `mtry` and `min_n` for optimal accuracy.
+
+```r
+# Define a tuning grid
+rf_grid <- grid_regular(mtry(range = c(1, 5)), min_n(range = c(5, 20)), levels = 5)
+
+# Perform cross-validation
+rf_results <- tune_grid(
+  rf_spec,
+  resamples = vfold_cv(iris_train, v = 5),
+  grid = rf_grid
+)
+
+# Show best parameters
+show_best(rf_results, metric = "accuracy")
+```
+
+- **What to Explain**:
+  - Introduce each hyperparameter and its impact on the model.
+  - Discuss the trade-offs when tuning hyperparameters (e.g., accuracy vs. training time).
+  - Demonstrate the use of `tune_grid` for systematic hyperparameter optimization.
+
+## **Slide 15: Introducing Boosting Methods**
+
+- **Content**:
+  - **Boosting**: An ensemble technique where each new model corrects errors made by the previous ones.
+  - **Key Characteristics**:
+    - Sequential learning: Models are built sequentially, not independently.
+    - Focus on hard-to-classify samples by assigning higher weights to misclassified points.
+  - **Popular Methods**:
+    - **AdaBoost**: Uses stumps as weak learners.
+    - **Gradient Boosting**: Minimizes the gradient of loss function.
+
+- **What to Explain**:
+  - Define boosting and its sequential nature.
+  - Contrast boosting with bagging (Random Forests).
+  - Highlight when boosting is preferred (e.g., when high accuracy is required).
+
+## **Slide 16: Understanding Weak Learners in Boosting**
+- **Content**:
+  - **Weak Learners**: Models that perform slightly better than random guessing.
+  - AdaBoost combines multiple weak learners (e.g., stumps) to form a strong learner.
+  - **Stumps**: Decision trees with only one split.
+  - **Intuition**:
+    - Boosting corrects errors by emphasizing misclassified points.
+
+**Example Code**: Implement a stump-based learner using `rpart`:
+
+```r
+# Create a stump-based model
+stump_model <- decision_tree(tree_depth = 1) %>%
+  set_mode("classification") %>%
+  set_engine("rpart")
+
+# Fit the stump model
+stump_fit <- stump_model %>%
+  fit(Species ~ Sepal.Width, data = iris_train)
+```
+
+- **What to Explain**:
+  - Define weak learners and explain why boosting uses them.
+  - Describe how stumps work and their limitations.
+  - Discuss how boosting aggregates weak learners into a strong classifier.
+
+
+## **Slide 17: Building AdaBoost Models in R**
+
+- **Content**:
+  - AdaBoost (Adaptive Boosting) iteratively adjusts weights of misclassified points.
+  - Uses a sequence of weak learners, each correcting its predecessor.
+  - Final model is a weighted sum of all learners.
+
+**Example Code**: Implement AdaBoost using the `C50` package:
+
+```r
+library(C50)
+# Create and fit an AdaBoost model
+adaboost_model <- C5.0(Species ~ ., data = iris_train, trials = 50)
+summary(adaboost_model)
+```
+
+- **What to Explain**:
+  - Walk through each step of building an AdaBoost model.
+  - Discuss how AdaBoost updates sample weights in each iteration.
+  - Highlight AdaBoost’s strengths and limitations.
+
+## **Slide 18: Understanding Gradient Boosting**
+- **Content**:
+  - Gradient Boosting minimizes a custom loss function by adding new models.
+  - Each model attempts to fit the **residuals** of the previous model.
+  - **Mathematical Formulation**:
+    - Update rule: \( h_{new} = h_{prev} - \eta \times \nabla L \).
+  - Applications: Predicting continuous variables, disease progression.
+
+- **What to Explain**:
+  - Introduce gradient boosting and its focus on residuals.
+  - Compare it with AdaBoost.
+  - Discuss its advantages for continuous predictions.
+
+## **Slide 19: Implementing Gradient Boosting in R**
+
+- **Content**:
+  - Use the `xgboost` package to implement gradient boosting.
+  - Set hyperparameters: `eta` (learning rate), `max_depth`, `nrounds` (number of iterations).
+
+```r
+library(xgboost)
+# Prepare data for xgboost
+train_matrix <- xgb.DMatrix(data = as.matrix(iris_train[, -5]), label = as.numeric(iris_train$Species) - 1)
+
+# Train xgboost model
+xgb_model <- xgboost(data = train_matrix, eta = 0.3, max_depth = 3, nrounds = 50, objective = "multi:softprob", num_class = 3)
+```
+
+- **What to Explain**:
+  - Introduce the `xgboost` package and its functionality.
+  - Describe each hyperparameter’s role in gradient boosting.
+
+
+## **Slide 20: Comparing Boosting and Bagging**
+
+- **Content**:
+  - **Bagging (Random Forests)**:
+    - Independent trees trained on bootstrapped samples.
+  - **Boosting**:
+    - Sequential trees correcting previous errors.
+  - **Trade-offs**:
+    - Bagging reduces variance; Boosting reduces bias.
+    - Boosting is more prone to overfitting but can achieve higher accuracy.
+
+- **What to Explain**:
+  - Compare bagging and boosting in terms of their learning strategies.
+  - Discuss when to use each method based on data characteristics.
+
