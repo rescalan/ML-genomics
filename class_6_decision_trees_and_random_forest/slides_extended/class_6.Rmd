@@ -1,0 +1,198 @@
+---
+title: "Class 6 - ML in Genomics: Decision Trees to Random Forests"
+author: "Renan Escalante"
+date: "2024-10-17"
+output:
+  xaringan::moon_reader:
+    css: [default, metropolis, metropolis-fonts]
+    lib_dir: libs
+    nature:
+      highlightStyle: github
+      highlightLines: true
+      countIncrementalSlides: false
+---
+
+```{r setup, include=FALSE}
+options(htmltools.dir.version = FALSE)
+knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE)
+library(tidyverse)
+library(tidymodels)
+library(palmerpenguins)
+library(vip)
+```
+
+# Introduction to Decision Trees
+
+--
+
+- Tree-like structure: root node, internal nodes, leaves
+
+--
+
+- Decisions made at each node based on feature values
+
+--
+
+- Classification process: traverse from root to leaf
+
+--
+
+- Recursive partitioning: splitting data into subsets
+
+---
+
+# Gini Impurity
+
+--
+
+- Measure of node purity in classification trees
+
+--
+
+- Used to choose the best split at each node
+
+--
+
+- Formula: $Gini = 1 - \sum_{i=1}^{c} p_i^2$
+
+  where $c$ is the number of classes and $p_i$ is the proportion of samples in class $i$
+
+--
+
+- Lower Gini impurity indicates better split
+
+---
+
+# Gini Impurity Example
+
+Consider a node with 10 samples:
+- 6 samples of class A
+- 4 samples of class B
+
+--
+
+Gini impurity calculation:
+
+$Gini = 1 - (\frac{6}{10})^2 - (\frac{4}{10})^2$
+
+$Gini = 1 - 0.36 - 0.16 = 0.48$
+
+---
+
+# Advantages of Decision Trees
+
+--
+
+- Interpretability: Easy to understand and explain
+
+--
+
+- Handle non-linear relationships between features
+
+--
+
+- Can work with both numerical and categorical data
+
+--
+
+- No need for feature scaling
+
+---
+
+# Limitations of Decision Trees
+
+--
+
+- Tendency to overfit, especially with deep trees
+
+--
+
+- Instability: Small changes in data can lead to very different trees
+
+--
+
+- May struggle with highly imbalanced datasets
+
+--
+
+- Not ideal for capturing linear relationships
+
+---
+
+# Regression Trees
+
+--
+
+- Similar structure to classification trees, but predict continuous values
+
+--
+
+- Splitting criteria: Minimize sum of squared residuals
+
+--
+
+- Leaf values: Usually the mean of samples in the leaf
+
+--
+
+- Example use case: Predicting gene expression levels
+
+---
+
+# Building a Regression Tree
+
+1. Start with all data in the root node
+2. For each feature, find the best split that minimizes SSR
+3. Choose the feature and split point with lowest overall SSR
+4. Repeat steps 2-3 for each resulting node until stopping criteria met
+
+---
+
+# Pruning Regression Trees
+
+--
+
+- Necessary to prevent overfitting
+
+--
+
+- Cost-complexity pruning: Balance tree size and prediction accuracy
+
+--
+
+- Process:
+  1. Grow a large tree
+  2. Calculate cost-complexity for different tree sizes
+  3. Use cross-validation to choose optimal complexity parameter
+  4. Prune the tree based on the chosen parameter
+
+---
+
+# Evaluating Regression Trees
+
+--
+
+- Use cross-validation to estimate performance
+
+--
+
+- Common metrics:
+  - Mean Squared Error (MSE)
+  - Root Mean Squared Error (RMSE)
+  - R-squared (R²)
+  - Mean Absolute Error (MAE)
+
+--
+
+- Compare performance with other models (e.g., linear regression)
+
+---
+
+# Hands-on: Penguin Classification
+
+Let's start exploring the Palmer Penguins dataset for classification:
+
+```{r}
+data(penguins)
+head(penguins)
+```
