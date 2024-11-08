@@ -368,3 +368,559 @@ Feature Engineering:
 :::
 
 ::::
+
+
+## Gene Function Prediction {.smaller}
+
+:::: {.columns}
+
+::: {.column width="60%"}
+KNN Implementation:
+
+```{r}
+#| echo: true
+#| eval: false
+library(tidymodels)
+
+# Create KNN specification
+knn_spec %
+  set_engine("kknn") %>%
+  set_mode("classification")
+
+# Create workflow
+knn_workflow %
+  add_model(knn_spec) %>%
+  add_formula(gene_function ~ .)
+
+# Tune model
+knn_grid <- grid_regular(
+  neighbors(range = c(1, 20)),
+  levels = 20
+)
+
+knn_tune <- tune_grid(
+  knn_workflow,
+  resamples = vfold_cv(training_data, v = 5),
+  grid = knn_grid
+)
+```
+:::
+
+::: {.column width="40%"}
+Key Features:
+
+1. Sequence Features
+   - Motifs
+   - Domain structure
+   
+2. Expression Patterns
+   - Tissue specificity
+   - Co-expression
+   
+3. Protein Interactions
+   - Physical interactions
+   - Genetic interactions
+   
+4. Validation Methods
+   - GO enrichment
+   - Experimental validation
+:::
+
+::::
+
+## Disease Risk Assessment {.smaller}
+
+:::: {.columns}
+
+::: {.column width="50%"}
+Logistic Regression Approach:
+
+```{r}
+#| echo: true
+#| eval: false
+library(tidymodels)
+
+# Create logistic regression spec
+log_spec %
+  set_engine("glm")
+
+# Create recipe for preprocessing
+risk_recipe %
+  step_normalize(all_predictors()) %>%
+  step_poly(all_numeric_predictors()) %>%
+  step_zv(all_predictors())
+
+# Create workflow
+log_workflow %
+  add_model(log_spec) %>%
+  add_recipe(risk_recipe)
+
+# Fit model
+log_fit %
+  fit(data = training_data)
+```
+:::
+
+::: {.column width="50%"}
+Risk Assessment Components:
+
+1. Genetic Variants
+   - SNPs
+   - Structural variants
+   
+2. Clinical Data
+   - Family history
+   - Environmental factors
+   
+3. Integration Methods
+   - Risk scores
+   - Pathway analysis
+   
+4. Population Studies
+   - Cohort validation
+   - Effect sizes
+:::
+
+::::
+
+## Variant Effect Prediction {.smaller}
+
+:::: {.columns}
+
+::: {.column width="55%"}
+```{r}
+#| echo: true
+#| eval: false
+library(tidymodels)
+
+# Create model specification
+xgb_spec %
+  set_engine("xgboost") %>%
+  set_mode("classification")
+
+# Create recipe
+variant_recipe %
+  step_normalize(all_numeric_predictors()) %>%
+  step_dummy(all_nominal_predictors())
+
+# Bundle workflow
+variant_workflow %
+  add_model(xgb_spec) %>%
+  add_recipe(variant_recipe)
+```
+:::
+
+::: {.column width="45%"}
+Prediction Features:
+
+1. Sequence Conservation
+   - PhyloP scores
+   - GERP scores
+   
+2. Structural Features
+   - Protein domains
+   - Secondary structure
+   
+3. Clinical Significance
+   - Known pathogenic variants
+   - Population frequency
+   
+4. Model Interpretability
+   - Feature importance
+   - SHAP values
+:::
+
+::::
+
+## Gene Network Analysis {.smaller}
+
+:::: {.columns}
+
+::: {.column width="50%"}
+Network Construction:
+
+```{r}
+#| echo: true
+#| eval: false
+library(tidyverse)
+library(igraph)
+
+# Create network from interaction data
+network_data %
+  select(gene1, gene2, weight) %>%
+  graph_from_data_frame(directed = FALSE)
+
+# Calculate network metrics
+degree_centrality <- degree(network_data)
+betweenness <- betweenness(network_data)
+communities <- cluster_louvain(network_data)
+
+# Visualize network
+plot(network_data,
+     vertex.size = degree_centrality,
+     vertex.color = membership(communities),
+     edge.width = E(network_data)$weight)
+```
+:::
+
+::: {.column width="50%"}
+Analysis Components:
+
+1. Interaction Prediction
+   - Co-expression
+   - Protein-protein interactions
+   
+2. Network Construction
+   - Edge weights
+   - Node attributes
+   
+3. Pathway Analysis
+   - Module detection
+   - Pathway enrichment
+   
+4. Disease Mechanisms
+   - Network perturbation
+   - Drug targets
+:::
+
+::::
+
+## Algorithms: Random Forest Applications {.smaller}
+
+:::: {.columns}
+
+::: {.column width="60%"}
+Implementation Strategy:
+
+```{r}
+#| echo: true
+#| eval: false
+library(tidymodels)
+
+# Create RF specification with tuning
+rf_spec %
+  set_engine("ranger", importance = "permutation") %>%
+  set_mode("classification")
+
+# Create cross-validation folds
+cv_folds <- vfold_cv(training_data, v = 5)
+
+# Tune hyperparameters
+rf_tune <- tune_grid(
+  rf_spec,
+  outcome ~ .,
+  resamples = cv_folds,
+  grid = 20,
+  metrics = metric_set(roc_auc, accuracy, kap)
+)
+```
+:::
+
+::: {.column width="40%"}
+Key Considerations:
+
+1. Feature Importance
+   - Gini importance
+   - Permutation importance
+   
+2. Missing Data Handling
+   - Imputation
+   - Surrogate splits
+   
+3. Model Tuning
+   - Number of trees
+   - Minimum node size
+   - Feature sampling
+   
+4. Validation
+   - Out-of-bag error
+   - Cross-validation
+:::
+
+::::
+
+## Algorithms: Logistic Regression in Genomics {.smaller}
+
+:::: {.columns}
+
+::: {.column width="55%"}
+Model Implementation:
+
+```{r}
+#| echo: true
+#| eval: false
+library(tidymodels)
+
+# Create recipe for preprocessing
+log_recipe %
+  step_normalize(all_numeric_predictors()) %>%
+  step_dummy(all_nominal_predictors()) %>%
+  step_corr(all_numeric_predictors(), threshold = 0.9) %>%
+  step_nzv(all_predictors())
+
+# Create model specification with regularization
+log_spec %
+  set_engine("glmnet")
+
+# Create workflow
+log_workflow %
+  add_recipe(log_recipe) %>%
+  add_model(log_spec)
+```
+:::
+
+::: {.column width="45%"}
+Applications:
+
+1. Binary Outcomes
+   - Disease status
+   - Treatment response
+   
+2. Multiclass Problems
+   - Cancer subtypes
+   - Pathway activation
+   
+3. Feature Selection
+   - L1/L2 regularization
+   - Stepwise selection
+   
+4. Model Interpretation
+   - Odds ratios
+   - Confidence intervals
+:::
+
+::::
+
+## Algorithms: KNN in Genomic Analysis {.smaller}
+
+:::: {.columns}
+
+::: {.column width="50%"}
+Implementation Details:
+
+```{r}
+#| echo: true
+#| eval: false
+library(tidymodels)
+
+# Create recipe for distance-based learning
+knn_recipe %
+  step_normalize(all_numeric_predictors()) %>%
+  step_pca(all_numeric_predictors(), threshold = 0.9)
+
+# Create KNN specification
+knn_spec %
+  set_engine("kknn") %>%
+  set_mode("classification")
+
+# Create workflow
+knn_workflow %
+  add_recipe(knn_recipe) %>%
+  add_model(knn_spec)
+```
+:::
+
+::: {.column width="50%"}
+Key Components:
+
+1. Similarity Measures
+   - Euclidean distance
+   - Correlation distance
+   - Custom metrics
+   
+2. Parameter Optimization
+   - Number of neighbors
+   - Distance weighting
+   - Feature scaling
+   
+3. Applications
+   - Gene expression clustering
+   - Sample classification
+   - Feature selection
+   
+4. Limitations
+   - Curse of dimensionality
+   - Computational cost
+:::
+
+::::
+
+## Algorithms: Decision Trees {.smaller}
+
+:::: {.columns}
+
+::: {.column width="60%"}
+Implementation:
+
+```{r}
+#| echo: true
+#| eval: false
+library(tidymodels)
+
+# Create decision tree specification
+tree_spec %
+  set_engine("rpart") %>%
+  set_mode("classification")
+
+# Create workflow
+tree_workflow %
+  add_model(tree_spec) %>%
+  add_formula(outcome ~ .)
+
+# Tune hyperparameters
+tree_grid <- grid_regular(
+  cost_complexity(),
+  tree_depth(),
+  min_n(),
+  levels = 5
+)
+
+tree_tune <- tune_grid(
+  tree_workflow,
+  resamples = vfold_cv(training_data, v = 5),
+  grid = tree_grid
+)
+```
+:::
+
+::: {.column width="40%"}
+Model Characteristics:
+
+1. Interpretable Models
+   - Visual representation
+   - Rule extraction
+   
+2. Feature Hierarchies
+   - Information gain
+   - Gini impurity
+   
+3. Splitting Criteria
+   - Numeric thresholds
+   - Categorical splits
+   
+4. Pruning Strategies
+   - Cost complexity
+   - Minimum node size
+:::
+
+::::
+
+## Data Preprocessing Challenges {.smaller}
+
+:::: {.columns}
+
+::: {.column width="50%"}
+Implementation Strategy:
+
+```{r}
+#| echo: true
+#| eval: false
+library(tidymodels)
+
+# Create comprehensive preprocessing recipe
+preprocess_recipe %
+  # Missing data
+  step_impute_knn(all_numeric_predictors()) %>%
+  step_impute_mode(all_nominal_predictors()) %>%
+  
+  # Normalization
+  step_normalize(all_numeric_predictors()) %>%
+  
+  # Batch correction
+  step_normalize(all_numeric_predictors(), 
+                group = "batch") %>%
+  
+  # Feature selection
+  step_corr(all_numeric_predictors()) %>%
+  step_nzv(all_predictors()) %>%
+  
+  # Quality control
+  step_zv(all_predictors())
+```
+:::
+
+::: {.column width="50%"}
+Key Challenges:
+
+1. Missing Data
+   - KNN imputation
+   - Mean/median imputation
+   - Multiple imputation
+   
+2. Normalization
+   - Z-score
+   - Quantile normalization
+   - Log transformation
+   
+3. Batch Effects
+   - ComBat
+   - RUV
+   - SVA
+   
+4. Quality Control
+   - Outlier detection
+   - Technical artifacts
+   - Sample filtering
+:::
+
+::::
+
+## Feature Engineering in Genomics {.smaller}
+
+:::: {.columns}
+
+::: {.column width="55%"}
+Feature Creation:
+
+```{r}
+#| echo: true
+#| eval: false
+library(tidymodels)
+library(Biostrings)
+
+# Create genomic features recipe
+genomic_recipe %
+  # Sequence features
+  step_mutate(
+    gc_content = str_count(sequence, "[GC]")/str_length(sequence),
+    motif_count = str_count(sequence, "TATA"),
+    entropy = entropy(sequence)
+  ) %>%
+  
+  # Expression features
+  step_mutate(
+    expr_zscore = scale(expression),
+    expr_percentile = percent_rank(expression)
+  ) %>%
+  
+  # Clinical features
+  step_dummy(all_nominal_predictors()) %>%
+  step_interact(~ starts_with("expr"):starts_with("clinical"))
+```
+:::
+
+::: {.column width="45%"}
+Feature Types:
+
+1. Sequence Features
+   - k-mer frequencies
+   - GC content
+   - Conservation scores
+   
+2. Expression Patterns
+   - Fold changes
+   - Time series
+   - Tissue specificity
+   
+3. Structural Information
+   - Protein domains
+   - Secondary structure
+   - Accessibility
+   
+4. Clinical Variables
+   - Patient demographics
+   - Disease stages
+   - Treatment history
+:::
+
+::::

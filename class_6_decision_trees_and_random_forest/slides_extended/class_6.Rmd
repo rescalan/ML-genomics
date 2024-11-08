@@ -196,3 +196,322 @@ Let's start exploring the Palmer Penguins dataset for classification:
 data(penguins)
 head(penguins)
 ```
+
+---
+
+# Data Understanding
+
+Let's examine the structure of the penguins dataset:
+
+```{r}
+str(penguins)
+```
+
+--
+
+Features for classification:
+- bill_length_mm, bill_depth_mm, flipper_length_mm, body_mass_g
+- island, sex
+
+Target variable:
+- species
+
+---
+
+# Data Summary
+
+We can use `skimr::skim()` to get a comprehensive summary:
+
+```{r}
+library(skimr)
+skim(penguins)
+```
+
+---
+
+# Visualization of Relationships
+
+Let's visualize relationships between features:
+
+```{r, fig.height=6, fig.width=10}
+library(GGally)
+penguins %>%
+  select(species, bill_length_mm, bill_depth_mm, flipper_length_mm, body_mass_g) %>%
+  ggpairs(aes(color = species, alpha = 0.8))
+```
+
+---
+
+# Data Preparation
+
+Remove rows with missing values:
+
+```{r}
+penguins_clean <- penguins %>%
+  drop_na()
+
+print(paste("Rows before:", nrow(penguins)))
+print(paste("Rows after:", nrow(penguins_clean)))
+```
+
+---
+
+# Train-Test Split
+
+Split the data into training and testing sets:
+
+```{r}
+set.seed(123)
+penguin_split <- initial_split(penguins_clean, prop = 0.75, strata = species)
+penguin_train <- training(penguin_split)
+penguin_test <- testing(penguin_split)
+
+print(paste("Training set size:", nrow(penguin_train)))
+print(paste("Testing set size:", nrow(penguin_test)))
+```
+
+---
+
+# Recipe for Classification
+
+Create a recipe for data preprocessing:
+
+```{r}
+penguin_recipe <- recipe(species ~ ., data = penguin_train) %>%
+  step_normalize(all_numeric_predictors()) %>%
+  step_dummy(all_nominal_predictors(), -all_outcomes()) %>%
+  step_zv(all_predictors())
+
+# Print the recipe
+penguin_recipe
+```
+
+---
+
+# Cross-Validation Folds
+
+Create a validation set using k-fold cross-validation:
+
+```{r}
+set.seed(234)
+penguin_folds <- vfold_cv(penguin_train, v = 5, strata = species)
+penguin_folds
+```
+
+---
+
+# Decision Tree Model Specification
+
+Specify a decision tree model for classification:
+
+```{r}
+tree_spec <- decision_tree() %>%
+  set_engine("rpart") %>%
+  set_mode("classification")
+
+tree_spec
+```
+
+---
+
+# Random Forest Model Specification
+
+Specify a random forest model for classification:
+
+```{r}
+rf_spec <- rand_forest() %>%
+  set_engine("ranger") %>%
+  set_mode("classification")
+
+rf_spec
+```
+
+---
+
+# Creating Workflows
+
+Create workflows for both classification models:
+
+```{r}
+tree_wflow <- workflow() %>%
+  add_recipe(penguin_recipe) %>%
+  add_model(tree_spec)
+
+rf_wflow <- workflow() %>%
+  add_recipe(penguin_recipe) %>%
+  add_model(rf_spec)
+
+# Print workflows
+tree_wflow
+rf_wflow
+```
+
+---
+
+# Fitting Classification Models
+
+Let's fit our models to the resamples and collect performance metrics:
+
+```{r}
+tree_res <- tree_wflow %>%
+  fit_resamples(
+    resamples = penguin_folds,
+    metrics = metric_set(accuracy, roc_auc, kap),
+    control = control_resamples(save_pred = TRUE)
+  )
+
+rf_res <- rf_wflow %>%
+  fit_resamples(
+    resamples = penguin_folds,
+    metrics = metric_set(accuracy, roc_auc, kap),
+    control = control_resamples(save_pred = TRUE)
+  )
+```
+
+---
+
+# Comparing Classification Models
+
+Compare the performance of decision tree and random forest:
+
+```{r}
+bind_rows(
+  collect_metrics(tree_res) %>% mutate(model = "Decision Tree"),
+  collect_metrics(rf_res) %>% mutate(model = "Random Forest")
+) %>%
+  select(model, .metric, mean, std_err) %>%
+  pivot_wider(names_from = .metric, values_from = c(mean, std_err))
+```
+
+---
+
+# Variable Importance (Random Forest)
+
+Create a variable importance plot for the random forest model:
+
+```{r}
+rf_wflow %>%
+  fit(penguin_train) %>%
+  pull_workflow_fit() %>%
+  vip(num_features = 10)
+```
+
+---
+
+# Final Model Evaluation (Classification)
+
+Fit the best performing model (random forest) to the entire training set and evaluate on the test set:
+
+```{r}
+rf_final <- rf_wflow %>%
+  last_fit(penguin_split)
+
+collect_metrics(rf_final)
+```
+
+---
+
+# Confusion Matrix (Classification)
+
+Create a confusion matrix for the classification predictions on the test set:
+
+```{r}
+rf_final %>%
+  collect_predictions() %>%
+  conf_mat(truth = species, estimate = .pred_class) %>%
+  autoplot(type = "heatmap")
+```
+
+---
+
+# Regression: Data Preparation
+
+Create a new recipe for regression, using body_mass_g as the target variable:
+
+```{r}
+penguin_reg_recipe <- recipe(body_mass_g ~ ., data = penguin_train) %>%
+  step_normalize(all_numeric_predictors()) %>%
+  step_dummy(all_nominal_predictors()) %>%
+  step_zv(all_predictors())
+
+# Print the recipe
+penguin_reg_recipe
+```
+
+---
+
+# Regression: Model Specification
+
+Specify regression tree and random forest models:
+
+```{r}
+reg_tree_spec <- decision_tree() %>%
+  set_engine("rpart") %>%
+  set_mode("regression")
+
+reg_rf_spec <- rand_forest() %>%
+  set_engine("ranger") %>%
+  set_mode("regression")
+
+# Print specifications
+reg_tree_spec
+reg_rf_spec
+```
+
+---
+
+# Regression: Creating Workflows
+
+Create workflows for both regression models:
+
+```{r}
+reg_tree_wflow <- workflow() %>%
+  add_recipe(penguin_reg_recipe) %>%
+  add_model(reg_tree_spec)
+
+reg_rf_wflow <- workflow() %>%
+  add_recipe(penguin_reg_recipe) %>%
+  add_model(reg_rf_spec)
+
+# Print workflows
+reg_tree_wflow
+reg_rf_wflow
+```
+
+---
+
+# Fitting Regression Models
+
+Fit the regression models to the resamples and collect performance metrics:
+
+```{r}
+reg_tree_res <- reg_tree_wflow %>%
+  fit_resamples(
+    resamples = penguin_folds,
+    metrics = metric_set(rmse, rsq, mae),
+    control = control_resamples(save_pred = TRUE)
+  )
+
+reg_rf_res <- reg_rf_wflow %>%
+  fit_resamples(
+    resamples = penguin_folds,
+    metrics = metric_set(rmse, rsq, mae),
+    control = control_resamples(save_pred = TRUE)
+  )
+```
+
+---
+
+# Comparing Regression Models
+
+Compare the performance of regression tree and random forest:
+
+```{r}
+bind_rows(
+  collect_metrics(reg_tree_res) %>% mutate(model = "Regression Tree"),
+  collect_metrics(reg_rf_res) %>% mutate(model = "Random Forest")
+) %>%
+  select(model, .metric, mean, std_err) %>%
+  pivot_wider(names_from = .metric, values_from = c(mean, std_err))
+```
+

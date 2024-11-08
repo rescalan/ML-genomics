@@ -156,7 +156,35 @@ knitr::kable(sens_spec, digits = 3)
 
 ## 13. ROC (Receiver Operating Characteristic) Curves
 
-```{r roc_curve}
+```{r, include=FALSE}
+image_dir <- here::here("class_5_logistic_regression/images_logistic_regression/")
+image_files <- list.files(path = image_dir, 
+                          pattern = "\\.jpg$|\\.png$|\\.gif$|\\.jpeg$", 
+                          full.names = TRUE)
+
+# Check if there are at least two images
+if (length(image_files) >= 2) {
+  specific_image_1 <- image_files[1]
+  specific_image_2 <- image_files[2]
+} else {
+  specific_image_1 <- NULL
+  specific_image_2 <- NULL
+}
+```
+
+
+```{r,  out.width="50%", echo=FALSE}
+# Display images side by side if available
+if (!is.null(specific_image_1) && !is.null(specific_image_2)) {
+  knitr::include_graphics(c(specific_image_1, specific_image_2))
+} else {
+  cat("Not enough images available to display.")
+}
+
+```
+
+
+```{r roc_curve, include=FALSE}
 predictions_prob <- predict(log_reg_fit, new_data = data, type = "prob")
 
 logistic_regression_roc <- bind_cols(data,
@@ -315,4 +343,7 @@ cat("Accuracy:", round(accuracy$.estimate, 3))
 
 
 
+```{r}
+
+```
 
