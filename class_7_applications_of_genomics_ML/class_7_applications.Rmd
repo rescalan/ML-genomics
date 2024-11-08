@@ -1,0 +1,370 @@
+---
+title: "Class 7 - ML in Genomics: Understanding Disease Through Data"
+author: "Renan Escalante"
+format:
+  revealjs:
+    theme: default
+    slide-number: true
+    show-slide-number: all
+    embed-resources: true
+    width: 1600
+    height: 900
+    footer: "ML in Genomics - 2024"
+editor: visual
+---
+
+## Overview
+
+- What is genomics?
+  - Study of an organism's complete set of DNA
+  - Understanding gene function and regulation
+  - Disease mechanisms and treatments
+
+- Why machine learning?
+  - Handle complex genomic data
+  - Discover patterns and relationships
+  - Make predictions for clinical applications
+
+- Key applications
+  - Cancer diagnosis and prognosis
+  - Drug response prediction
+  - Disease risk assessment
+
+## The Scale of Genomic Data {.smaller}
+
+:::: {.columns}
+
+::: {.column width="60%"}
+- Human genome contains approximately 3 billion base pairs
+
+- Multiple data types:
+  - DNA sequences
+  - RNA expression
+  - Protein interactions
+  - Clinical data
+
+- Scale of data:
+  - Thousands of samples
+  - Terabytes of sequencing data
+  - Multiple measurements per sample
+:::
+
+::: {.column width="40%"}
+```{r}
+#| echo: false
+#| warning: false
+#| message: false
+
+library(tidyverse)
+library(ggplot2)
+
+# Create example data for visualization
+data_types <- c("DNA Seq", "RNA-seq", "ChIP-seq", "Clinical")
+size_tb <- c(100, 50, 30, 1)
+
+ggplot(data.frame(data_types, size_tb), aes(x = data_types, y = size_tb)) +
+  geom_bar(stat = "identity", fill = "steelblue") +
+  labs(x = "Data Type", y = "Typical Size (TB)") +
+  theme_minimal() +
+  theme(text = element_text(size = 14))
+```
+:::
+
+::::
+
+## Types of Genomic Data {.smaller}
+
+:::: {.columns}
+
+::: {.column width="50%"}
+Key data types in genomic analysis:
+
+1. DNA sequences
+   - Genetic variants
+   - Mutations
+   
+2. Gene expression (RNA-seq)
+   - Transcript levels
+   - Alternative splicing
+   
+3. Epigenetic data
+   - DNA methylation
+   - Chromatin accessibility
+   
+4. Clinical metadata
+   - Patient information
+   - Treatment outcomes
+:::
+
+::: {.column width="50%"}
+```{r}
+#| echo: false
+#| warning: false
+#| message: false
+
+# Create example data for visualization
+data_characteristics <- data.frame(
+  DataType = c("DNA", "RNA", "Epigenetic", "Clinical"),
+  Complexity = c(8, 6, 7, 4),
+  ProcessingTime = c(7, 5, 6, 3)
+)
+
+# Create radar chart data
+library(tidyr)
+data_long <- pivot_longer(data_characteristics, 
+                         cols = c(Complexity, ProcessingTime))
+
+ggplot(data_long, aes(x = name, y = value, color = DataType)) +
+  geom_line(aes(group = DataType)) +
+  geom_point() +
+  coord_polar() +
+  theme_minimal() +
+  labs(title = "Data Characteristics") +
+  theme(text = element_text(size = 14))
+```
+:::
+
+::::
+
+## Machine Learning Tasks in Genomics
+
+1. Classification
+   - Disease diagnosis
+   - Tumor typing
+   - Variant pathogenicity
+
+2. Regression
+   - Gene expression prediction
+   - Drug response modeling
+   - Survival analysis
+
+3. Pattern Recognition
+   - Regulatory element identification
+   - Network inference
+   - Pathway analysis
+
+4. Feature Selection
+   - Biomarker discovery
+   - Key gene identification
+   - Dimensionality reduction
+
+## Traditional Analysis vs Machine Learning {.smaller}
+
+:::: {.columns}
+
+::: {.column width="50%"}
+Traditional Analysis:
+
+- Statistical hypothesis testing
+- Single variable analysis
+- Linear relationships
+- Limited sample size
+- Manual feature selection
+:::
+
+::: {.column width="50%"}
+Machine Learning Advantages:
+
+- Pattern discovery
+- Multi-variable analysis
+- Non-linear relationships
+- Scalable to large datasets
+- Automated feature selection
+:::
+
+::::
+
+```{r}
+#| echo: false
+#| warning: false
+#| message: false
+
+# Create comparison data
+methods <- c("Traditional", "Machine Learning")
+scalability <- c(3, 8)
+complexity <- c(4, 9)
+automation <- c(2, 8)
+
+comparison_data <- data.frame(
+  Method = rep(methods, 3),
+  Metric = c(rep("Scalability", 2), rep("Complexity", 2), rep("Automation", 2)),
+  Score = c(scalability, complexity, automation)
+)
+
+ggplot(comparison_data, aes(x = Metric, y = Score, fill = Method)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  scale_fill_manual(values = c("lightblue", "darkblue")) +
+  theme_minimal() +
+  labs(y = "Score (1-10)") +
+  theme(text = element_text(size = 14))
+```
+
+## Key Application: Cancer Genomics {.smaller}
+
+Applications of ML in cancer research:
+
+1. Tumor Classification
+   - Molecular subtypes
+   - Treatment stratification
+   
+2. Mutation Detection
+   - Driver mutations
+   - Pathogenic variants
+   
+3. Survival Prediction
+   - Prognostic models
+   - Risk stratification
+   
+4. Treatment Response
+   - Drug sensitivity
+   - Resistance mechanisms
+
+## Cancer Classification Using Expression Data {.smaller}
+
+:::: {.columns}
+
+::: {.column width="60%"}
+Random Forest Approach:
+
+```{r}
+#| echo: true
+#| eval: false
+library(tidymodels)
+
+# Example code for cancer classification
+rf_spec <- rand_forest(
+  trees = 1000,
+  min_n = 5
+) %>% 
+  set_mode("classification") %>%
+  set_engine("ranger")
+
+rf_workflow <- workflow() %>%
+  add_model(rf_spec) %>%
+  add_formula(cancer_type ~ .)
+
+# Fit model
+rf_fit <- rf_workflow %>%
+  fit(data = training_data)
+
+# Evaluate
+predict(rf_fit, new_data = testing_data)
+```
+:::
+
+::: {.column width="40%"}
+Key Components:
+
+- Feature selection
+  - Gene filtering
+  - Expression thresholds
+  
+- Validation
+  - Cross-validation
+  - Independent test sets
+  
+- Metrics
+  - Accuracy
+  - Sensitivity
+  - Specificity
+:::
+
+::::
+
+## Cancer Drug Response Prediction {.smaller}
+
+:::: {.columns}
+
+::: {.column width="50%"}
+Linear Regression Approach:
+
+```{r}
+#| echo: true
+#| eval: false
+library(tidymodels)
+
+# Linear regression model specification
+lm_spec <- linear_reg() %>%
+  set_engine("lm")
+
+# Create workflow
+lm_workflow <- workflow() %>%
+  add_model(lm_spec) %>%
+  add_formula(drug_response ~ .)
+
+# Fit and predict
+lm_fit <- lm_workflow %>%
+  fit(data = training_data)
+
+predictions <- predict(lm_fit, new_data = testing_data)
+```
+:::
+
+::: {.column width="50%"}
+Integration Strategy:
+
+1. Multi-omics data
+   - Expression
+   - Mutations
+   - Copy number
+   
+2. Clinical data
+   - Patient characteristics
+   - Treatment history
+   
+3. Validation
+   - Cross-validation
+   - External datasets
+:::
+
+::::
+
+## Regulatory Element Prediction {.smaller}
+
+:::: {.columns}
+
+::: {.column width="60%"}
+Machine Learning Approach:
+
+```{r}
+#| echo: true
+#| eval: false
+library(tidymodels)
+
+# Create model specification
+xgb_spec <- boost_tree(
+  trees = 1000,
+  min_n = 10,
+  tree_depth = 6
+) %>%
+  set_mode("classification") %>%
+  set_engine("xgboost")
+
+# Create workflow
+xgb_workflow <- workflow() %>%
+  add_model(xgb_spec) %>%
+  add_formula(enhancer ~ .)
+
+# Fit model
+xgb_fit <- xgb_workflow %>%
+  fit(data = training_data)
+```
+:::
+
+::: {.column width="40%"}
+Feature Engineering:
+
+1. Sequence features
+   - k-mers
+   - Conservation scores
+   
+2. Epigenetic marks
+   - Histone modifications
+   - DNA accessibility
+   
+3. Validation
+   - Experimental validation
+   - Cross-species conservation
+:::
+
+::::
