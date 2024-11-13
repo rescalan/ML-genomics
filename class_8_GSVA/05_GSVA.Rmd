@@ -1,0 +1,203 @@
+---
+title: "Gene Set Variation Analysis (GSVA) with Recount3 Data"
+subtitle: "Analysis of SRP136481 Dataset"
+author: "Renan Escalante"
+date: today
+format:
+  revealjs:
+    theme: default
+    transition: slide
+    slide-number: true
+    code-fold: show
+    highlight-style: github
+execute:
+  warning: false
+  message: false
+---
+
+## Setup {.smaller}
+
+```{r setup}
+#| echo: true
+#| message: false
+
+# Load required libraries
+library(recount3)
+library(GSVA)
+library(GSVAdata)
+library(msigdbr)
+library(SummarizedExperiment)
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+library(pheatmap)
+```
+
+## What is GSVA?
+
+::: {.incremental}
+- Transforms gene-level data to pathway-level scores
+- Reduces dimensionality
+- Enables pathway-centric analysis
+- Works with RNA-seq data
+:::
+
+## GSVA Method
+
+![](images/gsva-workflow.png)
+
+::: {.incremental}
+1. Expression data preparation
+2. Kernel density estimation
+3. Random walk integration
+4. Normalization
+:::
+
+## Data Preparation {.smaller}
+
+```{r data-prep}
+#| echo: true
+
+# Get available projects
+project_info <- available_projects()
+
+# Filter for SRP136481
+project <- project_info %>%
+  dplyr::filter(project == "SRP136481")
+
+# Create RSE object
+rse <- create_rse(project)
+
+# Transform counts
+assay(rse, "counts") <- transform_counts(rse)
+expr_matrix <- assay(rse, "counts")
+```
+
+## Loading Pathways {.smaller}
+
+```{r pathway-prep}
+#| echo: true
+
+# Load C2 canonical pathways
+c2_gene_sets <- msigdbr(species = "Homo sapiens", 
+                        category = "C2",
+                        subcategory = "CP") %>%
+  dplyr::select(gs_name, gene_symbol) %>%
+  split(x = .$gene_symbol, f = .$gs_name)
+
+print(paste("Number of pathways:", length(c2_gene_sets)))
+```
+
+## Data Processing {.smaller}
+
+```{r data-cleaning}
+#| echo: true
+
+# Match gene symbols
+gene_symbols <- rowData(rse)$gene_name
+rownames(expr_matrix) <- gene_symbols
+
+# Remove NA and duplicate symbols
+expr_matrix <- expr_matrix[!is.na(rownames(expr_matrix)), ]
+expr_matrix <- expr_matrix[!duplicated(rownames(expr_matrix)), ]
+```
+
+## Running GSVA {.smaller}
+
+```{r gsva-run}
+#| echo: true
+
+# Set up GSVA parameters
+gsvaPar <- GSVA::gsvaParam(expr = expr_matrix,
+                          geneSets = c2_gene_sets,
+                          kcdf = "Gaussian")
+
+# Run GSVA
+gsva_results <- gsva(gsvaPar, verbose=FALSE)
+```
+
+## Key Parameters
+
+::: {.columns}
+::: {.column width="50%"}
+**Expression Matrix**
+
+- log2(TPM + 1) transformed counts
+- Rows: genes
+- Columns: samples
+:::
+
+::: {.column width="50%"}
+**Gene Sets**
+
+- MSigDB C2 (Canonical Pathways)
+- Gene symbols
+- Gaussian kcdf for RNA-seq
+:::
+:::
+
+## Top Enriched Pathways {.smaller}
+
+```{r basic-stats}
+#| echo: false
+
+# Calculate mean enrichment scores
+mean_enrichment <- rowMeans(gsva_results)
+sorted_pathways <- sort(mean_enrichment, decreasing = TRUE)
+top_pathways <- head(sorted_pathways, 5)
+
+# Clean pathway names
+pathway_names <- names(top_pathways)
+shortened_names <- gsub("REACTOME_|KEGG_|BIOCARTA_|PID_|WP_", "", pathway_names)
+shortened_names <- gsub("_", " ", shortened_names)
+names(top_pathways) <- shortened_names
+
+print(top_pathways)
+```
+
+## Pathway Heatmap {.smaller}
+
+```{r top-heatmap}
+#| echo: false
+#| fig.width: 10
+#| fig.height: 6
+
+# Get top 20 pathways
+top_pathways <- head(sorted_pathways, 20)
+pathway_names <- names(top_pathways)
+shortened_names <- gsub("REACTOME_|KEGG_|BIOCARTA_|PID_|WP_", "", pathway_names)
+shortened_names <- gsub("_", " ", shortened_names)
+
+pheatmap(gsva_results[names(top_pathways), ],
+         main = "Top 20 Enriched Pathways",
+         scale = "row",
+         show_colnames = FALSE,
+         labels_row = shortened_names)
+```
+
+## Best Practices
+
+::: {.incremental}
+1. **Data Preparation**
+   - Remove low-count genes
+   - Normalize appropriately
+   - Check for batch effects
+
+2. **Parameter Selection**
+   - Choose appropriate method
+   - Select relevant pathway database
+   - Consider sample size
+
+3. **Result Interpretation**
+   - Use multiple visualizations
+   - Consider biological context
+   - Validate key findings
+:::
+
+## Questions?
+
+Thank you for your attention!
+
+::: {.notes}
+Contact information and additional resources can be added here.
+:::
